@@ -7,60 +7,89 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
-## About Laravel
+# Private Summarizer AI
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+Aplikasi web berbasis Laravel untuk meringkas teks dan PDF menggunakan model AI yang berjalan secara lokal dengan LM Studio. Aplikasi ini juga dilengkapi dengan fitur untuk membuat dan berlatih menggunakan flashcard.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Prasyarat (Perangkat Lunak yang Dibutuhkan)
+Pastikan perangkat lunak berikut sudah terpasang di komputer Anda sebelum memulai:
+- XAMPP: Untuk menyediakan lingkungan server web (Apache, MySQL, PHP). Alternatif seperti WAMP, MAMP, atau Laragon juga bisa digunakan.
+- Composer: Manajer paket untuk PHP, digunakan untuk menginstal dependensi Laravel.
+- Git: Sistem kontrol versi untuk mengunduh (clone) repositori.
+- LM Studio: Aplikasi untuk mengunduh dan menjalankan model AI secara lokal.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+# Langkah-langkah Instalasi
+Ikuti langkah-langkah ini secara berurutan untuk menjalankan proyek di komputer lokal Anda.
 
-## Learning Laravel
+1. Clone Repositori
+Buka terminal (Command Prompt, PowerShell, atau Git Bash) di direktori tempat Anda biasa menyimpan proyek (misalnya, C:\xampp\htdocs), lalu jalankan perintah berikut:
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+```
+git clone https://github.com/tehijoo/summary-ai.git
+```
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+Setelah selesai, masuk ke dalam folder proyek yang baru dibuat:
+```
+cd summary-ai
+```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+2. Instal Dependensi PHP
+Jalankan Composer untuk mengunduh semua paket PHP yang dibutuhkan oleh Laravel.
 
-## Laravel Sponsors
+```
+composer install
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+3. Siapkan File Konfigurasi (.env)
+Salin file konfigurasi contoh menjadi file konfigurasi utama, lalu generate kunci aplikasi.
 
-### Premium Partners
+```
+# Untuk pengguna Windows Command Prompt
+copy .env.example .env
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+# Jalankan perintah ini setelah menyalin
+php artisan key:generate
+```
 
-## Contributing
+4. Siapkan Database
+   - Buka XAMPP Control Panel dan pastikan Apache dan MySQL sudah berjalan (running).
+   - Buka browser dan akses http://localhost/phpmyadmin.
+   - Buat database baru dengan nama, misalnya, summary_ai.
+   - Buka file .env yang tadi Anda buat di dalam proyek.
+   - Sesuaikan baris berikut dengan konfigurasi database Anda. Untuk XAMPP standar, biasanya seperti ini:
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=summary_ai
+DB_USERNAME=root
+DB_PASSWORD=
+```
+5. Jalankan Migrasi Database
+Perintah ini akan membuat semua tabel yang dibutuhkan oleh aplikasi (seperti users, conversations, flashcard_sets, dll.) di dalam database summary_ai Anda.
 
-## Code of Conduct
+```
+php artisan migrate
+```
+6. Siapkan Model AI (LM Studio)
+   - Buka aplikasi LM Studio.
+   - Di tab pencarian (ikon kaca pembesar), cari model berikut: ```stabilityai/stablelm-2-zephyr-1_6b```
+   - Unduh salah satu versi GGUF yang direkomendasikan (misalnya, ```Q4_K_M```).
+   - Setelah unduhan selesai, pindah ke tab Server (ikon ```<->```).
+   - Di bagian atas, pilih model ```StableLM``` yang sudah Anda unduh.
+   - Klik tombol hijau "Start Server". Tunggu hingga log menunjukkan server berjalan di ```localhost:1234.```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+# Menjalankan Aplikasi
+Setiap kali Anda ingin menjalankan aplikasi ini, pastikan kedua server berikut sudah aktif:
+1. Server AI:
+   - Buka LM Studio, muat model, dan pastikan server API-nya sudah di-"Start".
+2. Server Web Laravel:
+   - Buka terminal di folder proyek Anda dan jalankan:
 
-## Security Vulnerabilities
+```
+php artisan serve
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+3. Akses Aplikasi:
+   - Buka browser Anda dan kunjungi alamat http://localhost:8000.
