@@ -45,7 +45,7 @@ class LLMController extends Controller
                 ['role' => 'user', 'content' => "Tolong buatkan ringkasan dari teks berikut. Berikan ringkasan dengan bahasa yang baik dan jelas dan memuat poin dari teks:\n\n" . Str::limit($text, 4000, '')],
             ],
             'max_tokens' => 1024,
-            'temperature' => 0.2,
+            'temperature' => 0.5,
         ]);
         
         if ($response->failed()) {
@@ -79,4 +79,92 @@ class LLMController extends Controller
         // Laravel akan otomatis menemukan data Conversation berdasarkan ID dari URL
         return view('project-detail', compact('conversation'));
     }
+    // --- METHOD BARU UNTUK FITUR Q&A ---
+
+    /**
+     * Menampilkan halaman utama Q&A dengan daftar dokumen.
+     */
+    public function qnaIndex()
+    {
+        $documents = \App\Models\Document::latest()->get();
+        return view('qna.index', compact('documents'));
+    }
+
+    /**
+     * Memproses upload dokumen, menyimpannya, dan redirect ke halaman chat.
+     */
+    public function qnaUpload(Request $request)
+    {
+        $request->validate(['document' => 'required|file|mimes:pdf,txt,docx|max:10240']); // max 10MB
+
+        $file = $request->file('document');
+        $originalName = $file->getClientOriginalName();
+        $textContent = '';
+
+        try {
+            $parser = new \Smalot\PdfParser\Parser();
+            $pdf = $parser->parseFile($file->getRealPath());
+            $textContent = $pdf->getText();
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to parse PDF file. Error: ' . $e->getMessage());
+        }
+
+        if (empty($textContent)) {
+            return back()->with('error', 'Could not extract text from the document.');
+        }
+
+        // Simpan dokumen ke database
+        $document = \App\Models\Document::create([
+            'original_filename' => $originalName,
+            'content' => $textContent,
+        ]);
+
+        return redirect()->route('qna.chat', $document);
+    }
+
+    /**
+     * Menampilkan halaman chat untuk dokumen tertentu.
+     */
+    public function qnaChat(\App\Models\Document $document)
+    {
+        return view('qna.chat', compact('document'));
+    }
+
+    /**
+     * Menerima pertanyaan dan memberikan jawaban dari AI.
+     */
+    public function qnaAsk(Request $request, \App\Models\Document $document)
+    {
+        $request->validate(['question' => 'required|string']);
+
+        $question = $request->question;
+        $context = $document->content;
+
+        // Memotong konteks agar tidak terlalu panjang untuk API call
+        $context = Str::limit($context, 4000, '');
+
+        $response = Http::timeout(120)->post(env('LLM_API_URL'), [
+            'model' => 'stabilityai/stablelm-2-zephyr-1_6b',
+            'messages' => [
+                ['role' => 'system', 'content' => 'You are a helpful assistant that answers questions based on the provided text.'],
+                ['role' => 'user', 'content' => "Based on the following text, answer the question.\n\nText:\n\"{$context}\"\n\nQuestion: {$question}\n\nAnswer in Indonesian:"],
+            ],
+            'max_tokens' => 500,
+            'temperature' => 0.3,
+        ]);
+
+        $answer = $response->json('choices.0.message.content') ?? 'Sorry, I could not find an answer.';
+
+        // Kita akan kembalikan sebagai JSON untuk chat interaktif nanti
+        return response()->json(['answer' => $answer]);
+    }
+    public function destroyProject(\App\Models\Conversation $conversation)
+{
+    // Hapus record dari database
+    $conversation->delete();
+
+    // Redirect kembali ke halaman riwayat dengan pesan sukses
+    return redirect()->route('projects.history')->with('success', 'Project has been deleted successfully.');
 }
+}
+
