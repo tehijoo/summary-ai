@@ -33,3 +33,5 @@ Route::get('/qna', [LLMController::class, 'qnaIndex'])->name('qna.index');
 Route::post('/qna/upload', [LLMController::class, 'qnaUpload'])->name('qna.upload');
 Route::get('/qna/chat/{document}', [LLMController::class, 'qnaChat'])->name('qna.chat');
 Route::post('/qna/chat/{document}', [LLMController::class, 'qnaAsk'])->name('qna.ask');
+
+Route::post('/documents/{document}/generate-flashcards', [App\Http\Controllers\LLMController::class, 'generateFlashcards'])->name('documents.generate-flashcards');

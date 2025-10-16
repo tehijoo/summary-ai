@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Conversation; // Pastikan ini ada di atas
+use App\Models\Document;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Smalot\PdfParser\Parser;
 use Illuminate\Support\Str;
+use App\Models\FlashcardSet;
 
 class LLMController extends Controller
 {
@@ -18,31 +20,41 @@ class LLMController extends Controller
 
     // Handle form submission
     public function ask(Request $request)
-    {
-        $text = $request->input('text');
-        $mode = 'text'; // Default mode
+{
+    $textContent = $request->input('text');
+    $originalName = 'Pasted Text'; // Default filename untuk teks yang ditempel
 
-        // Check if a PDF was uploaded
-        if ($request->hasFile('pdf')) {
-            $mode = 'pdf'; // Set mode to pdf
-            try {
-                $parser = new Parser();
-                $pdf = $parser->parseFile($request->file('pdf')->getRealPath());
-                $text = $pdf->getText();
-            } catch (\Exception $e) {
-                return back()->with('response', 'Error reading PDF file: ' . $e->getMessage());
-            }
+    // 1. Ekstrak teks jika ada file PDF yang diunggah
+    if ($request->hasFile('pdf')) {
+        $file = $request->file('pdf');
+        $originalName = $file->getClientOriginalName();
+        try {
+            $parser = new \Smalot\PdfParser\Parser();
+            $pdf = $parser->parseFile($file->getRealPath());
+            $textContent = $pdf->getText();
+        } catch (\Exception $e) {
+            return back()->with('response', 'Error reading PDF file: ' . $e->getMessage());
         }
+    }
 
-        if (!$text) {
-            return back()->with('response', 'Please enter text or upload a PDF.');
-        }
+    // Validasi jika tidak ada teks sama sekali
+    if (!$textContent) {
+        return back()->with('response', 'Please enter text or upload a PDF.');
+    }
+
+    $textContent = preg_replace('/\s+/', ' ', trim($textContent));
+
+    // 2. (PERUBAHAN UTAMA) Simpan konten asli ke tabel 'documents'
+    $document = Document::create([
+        'original_filename' => $originalName,
+        'content' => $textContent,
+    ]);
 
         $response = Http::timeout(120)->post(env('LLM_API_URL'), [
             'model' => 'stabilityai/stablelm-2-zephyr-1_6b',
             'messages' => [
                 ['role' => 'system', 'content' => 'Anda adalah seorang ahli yang pandai membuat ringkasan teks.'],
-                ['role' => 'user', 'content' => "Tolong buatkan ringkasan dari teks berikut. Berikan ringkasan dengan bahasa yang baik dan jelas dan memuat poin dari teks:\n\n" . Str::limit($text, 4000, '')],
+                ['role' => 'user', 'content' => "Tolong buatkan ringkasan dari teks berikut. Berikan ringkasan dengan bahasa yang baik dan jelas dan memuat poin dari teks:\n\n" . Str::limit($textContent, 4000, '')],
             ],
             'max_tokens' => 1024,
             'temperature' => 0.5,
@@ -54,17 +66,16 @@ class LLMController extends Controller
 
         $summary = $response->json('choices.0.message.content') ?? 'No valid response from model.';
 
-        // --- PENEMPATAN YANG BENAR ADA DI SINI ---
-        // Simpan input dan respons ke database
-        Conversation::create([
-            'mode' => $mode,
-            'input' => $text,
-            'response' => $summary,
-        ]);
-        // -----------------------------------------
+        // 4. (PERUBAHAN UTAMA) Simpan ringkasan ke tabel 'conversations' DAN hubungkan ke dokumen
+    Conversation::create([
+        'document_id' => $document->id, // Menghubungkan ringkasan ini ke dokumen aslinya
+        'mode' => 'summarize',
+        'input' => $textContent, // Input sekarang adalah isi lengkap dokumen
+        'response' => $summary,
+    ]);
 
-        return redirect('/chat')->with('response', $summary)->withInput();
-    }
+    return redirect('/chat')->with('response', $summary)->withInput();
+}
     // Method to display recent projects
     public function history()
 {
@@ -76,6 +87,9 @@ class LLMController extends Controller
 }
     public function show(Conversation $conversation)
     {
+        // Ambil semua percakapan, urutkan dari yang paling baru
+        $conversation->load('document'); // Eager load relasi document
+
         // Laravel akan otomatis menemukan data Conversation berdasarkan ID dari URL
         return view('project-detail', compact('conversation'));
     }
@@ -165,6 +179,63 @@ class LLMController extends Controller
 
     // Redirect kembali ke halaman riwayat dengan pesan sukses
     return redirect()->route('projects.history')->with('success', 'Project has been deleted successfully.');
+}
+
+    public function generateFlashcards(Document $document)
+{
+    // 1. Siapkan konteks dan prompt khusus untuk AI
+    $context = Str::limit($document->content, 2000, ''); // Batasi konteks
+    $prompt = "Based on the following text, create a set of questions and answers suitable for flashcards. Provide the output as a valid JSON array of objects. Each object must have two keys: 'term' for the question, and 'definition' for the answer. Create between 3 to 6 flashcards.\n\nExample format: [{\"term\": \"What is the capital of Indonesia?\", \"definition\": \"Jakarta.\"}]\n\nText:\n\"{$context}\"";
+
+    // 2. Kirim permintaan ke AI
+    $response = Http::timeout(180)->post(env('LLM_API_URL'), [
+        'model' => 'stabilityai/stablelm-2-zephyr-1_6b', // Pastikan ini model yang Anda gunakan
+        'messages' => [
+            ['role' => 'system', 'content' => 'You are a helpful assistant that creates flashcards in JSON format.'],
+            ['role' => 'user', 'content' => $prompt],
+        ],
+        'temperature' => 0.5,
+        'max_tokens' => 1500,
+    ]);
+
+    if ($response->failed()) {
+        return back()->with('error', 'Failed to connect to the AI model.');
+    }
+
+    $aiResponseContent = $response->json('choices.0.message.content');
+
+    // 3. Proses respons JSON dari AI
+    try {
+        $flashcardsData = json_decode($aiResponseContent, true, 512, JSON_THROW_ON_ERROR);
+    } catch (\JsonException $e) {
+        // Jika AI tidak mengembalikan JSON yang valid
+        return back()->with('error', 'The AI did not return a valid format. Please try again.');
+    }
+
+    if (!is_array($flashcardsData) || empty($flashcardsData)) {
+        return back()->with('error', 'The AI could not generate flashcards from this document.');
+    }
+
+    // 4. Simpan ke database
+    // Buat set flashcard baru
+    $flashcardSet = FlashcardSet::create([
+        'title' => 'AI Flashcards for: ' . Str::limit($document->original_filename, 50),
+        'description' => 'Automatically generated from a document.',
+    ]);
+
+    // Simpan setiap kartu
+    foreach ($flashcardsData as $cardData) {
+        // Pastikan formatnya benar sebelum menyimpan
+        if (isset($cardData['term']) && isset($cardData['definition'])) {
+            $flashcardSet->flashcards()->create([
+                'term' => $cardData['term'],
+                'definition' => $cardData['definition'],
+            ]);
+        }
+    }
+
+    // 5. Arahkan pengguna ke halaman untuk melihat set flashcard yang baru dibuat
+    return redirect()->route('flashcards.show', $flashcardSet)->with('success', 'AI has successfully generated your flashcards!');
 }
 }
 
