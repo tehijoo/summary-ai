@@ -54,7 +54,7 @@ php artisan key:generate
 ```
 # Tambahkan dua baris ini di bagian bawah file .env
 LLM_API_URL=https://api.mistral.ai/v1/chat/completions
-MISTRAL_API_KEY=KUZpts2cxX4FOdlm8jHKFIvqmjpMWZ5u
+MISTRAL_API_KEY=[KEY_API]
 ```
 
 
