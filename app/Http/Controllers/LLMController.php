@@ -50,8 +50,8 @@ class LLMController extends Controller
         'content' => $textContent,
     ]);
 
-        $response = Http::timeout(120)->post(env('LLM_API_URL'), [
-            'model' => 'stabilityai/stablelm-2-zephyr-1_6b',
+        $response = Http::withToken(env('MISTRAL_API_KEY'))->post(env('LLM_API_URL'), [
+            'model' => 'mistral-small-latest',
             'messages' => [
                 ['role' => 'system', 'content' => 'Anda adalah seorang ahli yang pandai membuat ringkasan teks.'],
                 ['role' => 'user', 'content' => "Tolong buatkan ringkasan dari teks berikut. Berikan ringkasan dengan bahasa yang baik dan jelas dan memuat poin dari teks:\n\n" . Str::limit($textContent, 4000, '')],
@@ -64,17 +64,21 @@ class LLMController extends Controller
             return back()->with('response', 'Failed to connect to the LLM Studio API. Is the server running?');
         }
 
-        $summary = $response->json('choices.0.message.content') ?? 'No valid response from model.';
+        $summaryMarkdown = $response->json('choices.0.message.content') ?? 'No valid response from model.';
+
+        // Proses Markdown menjadi HTML
+        $parsedown = new \Parsedown();
+        $summaryHtml = $parsedown->text($summaryMarkdown);
 
         // 4. (PERUBAHAN UTAMA) Simpan ringkasan ke tabel 'conversations' DAN hubungkan ke dokumen
     Conversation::create([
         'document_id' => $document->id, // Menghubungkan ringkasan ini ke dokumen aslinya
         'mode' => 'summarize',
         'input' => $textContent, // Input sekarang adalah isi lengkap dokumen
-        'response' => $summary,
+        'response' => $summaryMarkdown,
     ]);
 
-    return redirect('/chat')->with('response', $summary)->withInput();
+    return redirect('/chat')->with('response', $summaryHtml)->withInput();
 }
     // Method to display recent projects
     public function history()
@@ -157,8 +161,8 @@ class LLMController extends Controller
         // Memotong konteks agar tidak terlalu panjang untuk API call
         $context = Str::limit($context, 4000, '');
 
-        $response = Http::timeout(120)->post(env('LLM_API_URL'), [
-            'model' => 'stabilityai/stablelm-2-zephyr-1_6b',
+        $response = Http::withToken(env('MISTRAL_API_KEY'))->post(env('LLM_API_URL'), [
+            'model' => 'mistral-small-latest',
             'messages' => [
                 ['role' => 'system', 'content' => 'You are a helpful assistant that answers questions based on the provided text.'],
                 ['role' => 'user', 'content' => "Based on the following text, answer the question.\n\nText:\n\"{$context}\"\n\nQuestion: {$question}\n\nAnswer in Indonesian:"],
@@ -181,34 +185,35 @@ class LLMController extends Controller
     return redirect()->route('projects.history')->with('success', 'Project has been deleted successfully.');
 }
 
-    public function generateFlashcards(Document $document)
+ /*  public function generateFlashcards(Document $document)
 {
-    // 1. Siapkan konteks dan prompt khusus untuk AI
-    $context = Str::limit($document->content, 2000, ''); // Batasi konteks
-    $prompt = "Based on the following text, create a set of questions and answers suitable for flashcards. Provide the output as a valid JSON array of objects. Each object must have two keys: 'term' for the question, and 'definition' for the answer. Create between 3 to 6 flashcards.\n\nExample format: [{\"term\": \"What is the capital of Indonesia?\", \"definition\": \"Jakarta.\"}]\n\nText:\n\"{$context}\"";
+    set_time_limit(300); // Perpanjang batas waktu eksekusi jika perlu
 
-    // 2. Kirim permintaan ke AI
-    $response = Http::timeout(180)->post(env('LLM_API_URL'), [
-        'model' => 'stabilityai/stablelm-2-zephyr-1_6b', // Pastikan ini model yang Anda gunakan
-        'messages' => [
-            ['role' => 'system', 'content' => 'You are a helpful assistant that creates flashcards in JSON format.'],
-            ['role' => 'user', 'content' => $prompt],
-        ],
-        'temperature' => 0.5,
-        'max_tokens' => 1500,
-    ]);
+    $context = Str::limit($document->content, 2500, ''); 
+    $prompt = "Berdasarkan teks berikut, buatlah satu set pertanyaan dan jawaban untuk flashcard. Berikan output dalam format JSON array yang valid. Setiap objek harus memiliki kunci 'term' untuk pertanyaan dan 'definition' untuk jawaban. Buat antara 1 sampai 3 flashcard.\n\nContoh format: [{\"term\": \"Siapa nama tokoh utama?\", \"definition\": \"Arga.\"}]\n\nTeks:\n\"{$context}\"";
+
+    // KUNCI PERBAIKAN: Pindahkan ->timeout(180) SEBELUM ->post()
+    $response = Http::withToken(env('MISTRAL_API_KEY'))
+        ->timeout(180) 
+        ->post(env('LLM_API_URL'), [
+            'model' => 'mistral-small-latest',
+            'messages' => [
+                ['role' => 'system', 'content' => 'Anda adalah asisten yang membantu membuat flashcard dalam format JSON.'],
+                ['role' => 'user', 'content' => $prompt],
+            ],
+            'temperature' => 0.5,
+            'max_tokens' => 1500,
+        ]);
 
     if ($response->failed()) {
-        return back()->with('error', 'Failed to connect to the AI model.');
+        return back()->with('error', 'The AI service timed out or failed. Please try again. Error: ' . $response->body());
     }
 
     $aiResponseContent = $response->json('choices.0.message.content');
 
-    // 3. Proses respons JSON dari AI
     try {
         $flashcardsData = json_decode($aiResponseContent, true, 512, JSON_THROW_ON_ERROR);
     } catch (\JsonException $e) {
-        // Jika AI tidak mengembalikan JSON yang valid
         return back()->with('error', 'The AI did not return a valid format. Please try again.');
     }
 
@@ -216,16 +221,12 @@ class LLMController extends Controller
         return back()->with('error', 'The AI could not generate flashcards from this document.');
     }
 
-    // 4. Simpan ke database
-    // Buat set flashcard baru
     $flashcardSet = FlashcardSet::create([
         'title' => 'AI Flashcards for: ' . Str::limit($document->original_filename, 50),
         'description' => 'Automatically generated from a document.',
     ]);
 
-    // Simpan setiap kartu
     foreach ($flashcardsData as $cardData) {
-        // Pastikan formatnya benar sebelum menyimpan
         if (isset($cardData['term']) && isset($cardData['definition'])) {
             $flashcardSet->flashcards()->create([
                 'term' => $cardData['term'],
@@ -234,8 +235,35 @@ class LLMController extends Controller
         }
     }
 
-    // 5. Arahkan pengguna ke halaman untuk melihat set flashcard yang baru dibuat
     return redirect()->route('flashcards.show', $flashcardSet)->with('success', 'AI has successfully generated your flashcards!');
 }
-}
+*/
+public function saveAiFlashcards(Request $request)
+{
+    $request->validate([
+        'title' => 'required|string',
+        'description' => 'nullable|string',
+        'flashcardsData' => 'required|array',
+    ]);
 
+    // 1. Buat set flashcard baru
+    $flashcardSet = FlashcardSet::create([
+        'title' => $request->title,
+        'description' => $request->description,
+    ]);
+
+    // 2. Simpan setiap kartu
+    foreach ($request->flashcardsData as $cardData) {
+        if (isset($cardData['term']) && isset($cardData['definition'])) {
+            $flashcardSet->flashcards()->create([
+                'term' => $cardData['term'],
+                'definition' => $cardData['definition'],
+            ]);
+        }
+    }
+
+    // 3. Kembalikan URL untuk redirect
+    return response()->json([
+        'redirect_url' => route('flashcards.show', $flashcardSet)
+    ]);
+}}

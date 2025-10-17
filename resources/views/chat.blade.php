@@ -48,10 +48,12 @@
     @if(session('response'))
         <div class="mt-12">
             <h3 class="text-2xl font-bold text-gray-800 dark:text-white">Most Recent Summary</h3>
-            {{-- Perubahan: Tambah warna latar, border, dan teks untuk dark mode --}}
-            <div class="mt-6 bg-green-50 dark:bg-gray-800 border border-green-200 dark:border-gray-700 text-green-800 dark:text-gray-200 p-6 rounded-lg" style="white-space: pre-wrap;">
-                {{ session('response') }}
+            
+            {{-- Perubahan: Tambah kelas 'prose' dan gunakan sintaks {!! !!} --}}
+            <div class="mt-6 bg-green-50 dark:bg-gray-800 border border-green-200 dark:border-gray-700 text-green-800 dark:text-gray-200 p-6 rounded-lg prose dark:prose-invert max-w-none" style="white-space: pre-wrap;">
+                {!! session('response') !!}
             </div>
+
         </div>
     @endif
 </div>

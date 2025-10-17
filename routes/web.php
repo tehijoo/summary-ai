@@ -35,3 +35,4 @@ Route::get('/qna/chat/{document}', [LLMController::class, 'qnaChat'])->name('qna
 Route::post('/qna/chat/{document}', [LLMController::class, 'qnaAsk'])->name('qna.ask');
 
 Route::post('/documents/{document}/generate-flashcards', [App\Http\Controllers\LLMController::class, 'generateFlashcards'])->name('documents.generate-flashcards');
+Route::post('/flashcards/ai-save', [App\Http\Controllers\LLMController::class, 'saveAiFlashcards'])->name('flashcards.ai-save');
