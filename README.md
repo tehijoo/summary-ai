@@ -1,18 +1,5 @@
 <p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
-
-Of course. Switching to the Mistral AI API simplifies the setup process significantly for anyone else running your project.
-
-Here is the revised README.md file. You can copy and paste this entire block to update your file on GitHub.
-
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
-
 <p align="center"> <a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a> <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a> <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a> <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a> </p>
 
 ## Briefly - AI Summarizer
@@ -24,6 +11,7 @@ Aplikasi web berbasis Laravel untuk meringkas teks dan PDF, melakukan sesi tanya
 - Artificial Intelligence: Mistral AI API (menggunakan model mistral-small-latest)
 
 **Prasyarat**
+
 Pastikan perangkat lunak berikut sudah terpasang di komputer Anda sebelum memulai:
 - XAMPP: Untuk menyediakan lingkungan server web (Apache, MySQL, PHP).
 - Composer: Manajer paket untuk PHP.
@@ -62,7 +50,7 @@ copy .env.example .env
 # Jalankan perintah ini setelah menyalin
 php artisan key:generate
 ```
-# Buka file .env yang baru dibuat dan tambahkan URL API serta API Key Mistral Anda.
+**Buka file .env yang baru dibuat dan tambahkan URL API serta API Key Mistral Anda.**
 ```
 # Tambahkan dua baris ini di bagian bawah file .env
 LLM_API_URL=https://api.mistral.ai/v1/chat/completions
@@ -93,15 +81,11 @@ php artisan migrate
 ```
 
 # Menjalankan Aplikasi
-Setiap kali Anda ingin menjalankan aplikasi ini, pastikan kedua server berikut sudah aktif:
-1. Server AI:
-   - Buka LM Studio, muat model, dan pastikan server API-nya sudah di-"Start".
-2. Server Web Laravel:
-   - Buka terminal di folder proyek Anda dan jalankan:
-
+Sekarang, Anda hanya perlu menjalankan satu server saja.
+- Jalankan Server Web Laravel Buka terminal di folder proyek Anda dan jalankan:
 ```
 php artisan serve
 ```
+Akses Aplikasi Buka browser Anda dan kunjungi alamat ```http://localhost:8000```.
 
-3. Akses Aplikasi:
-   - Buka browser Anda dan kunjungi alamat http://localhost:8000.
+Aplikasi Anda sekarang sudah siap digunakan dan terhubung langsung ke API Mistral.
