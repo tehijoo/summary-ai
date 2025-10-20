@@ -266,4 +266,11 @@ public function saveAiFlashcards(Request $request)
     return response()->json([
         'redirect_url' => route('flashcards.show', $flashcardSet)
     ]);
+}
+    public function destroyDocument(\App\Models\Document $document)
+{
+    $document->delete();
+
+    // Redirect kembali ke halaman daftar dokumen dengan pesan sukses
+    return redirect()->route('qna.index')->with('success', 'Document has been deleted successfully.');
 }}

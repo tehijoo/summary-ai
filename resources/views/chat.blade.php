@@ -39,10 +39,12 @@
         </div>
 
         <div class="text-center">
-            <button type="submit" class="bg-blue-600 text-white font-bold py-3 px-10 rounded-lg hover:bg-blue-700 transition-colors text-lg">
-                Create Summary
-            </button>
-        </div>
+    <button type="submit" id="summary-btn" class="bg-blue-600 text-white font-bold py-3 px-10 rounded-lg hover:bg-blue-700 transition-colors text-lg flex items-center justify-center">
+        {{-- Ikon loading, awalnya disembunyikan --}}
+        <span id="btn-loader" class="material-icons animate-spin mr-2 hidden">hourglass_top</span>
+        <span id="btn-text">Create Summary</span>
+    </button>
+</div>
     </form>
 
     @if(session('response'))
@@ -59,61 +61,84 @@
 </div>
 @endsection
 
-@section('scripts') {{-- Anda bisa menggunakan section terpisah jika mau --}}
+@section('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        
+        // ===================================================
+        //           DRAG AND DROP SCRIPT (Sudah Ada)
+        // ===================================================
         const dropZone = document.getElementById('drop-zone');
         const fileInput = document.getElementById('pdf');
         const fileInfo = document.getElementById('file-info');
 
-        // Mencegah browser membuka file secara default saat di-drag
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, preventDefaults, false);
-        });
+        if (dropZone) {
+            // Mencegah browser membuka file secara default saat di-drag
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+            });
 
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            // Memberi highlight saat file di-drag di atas area
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => {
+                    dropZone.classList.add('border-blue-600', 'bg-blue-50', 'dark:bg-gray-700');
+                }, false);
+            });
+
+            // Menghilangkan highlight saat file meninggalkan area
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => {
+                    dropZone.classList.remove('border-blue-600', 'bg-blue-50', 'dark:bg-gray-700');
+                }, false);
+            });
+
+            // Menangani file yang di-drop
+            dropZone.addEventListener('drop', function (e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                fileInput.files = files;
+                if (files.length > 0) {
+                    fileInfo.textContent = `File selected: ${files[0].name}`;
+                }
+            }, false);
+
+            // Menampilkan nama file jika dipilih lewat tombol "Choose File"
+            fileInput.addEventListener('change', function() {
+                if (this.files.length > 0) {
+                    fileInfo.textContent = `File selected: ${this.files[0].name}`;
+                } else {
+                    fileInfo.textContent = '';
+                }
+            });
         }
 
-        // Memberi highlight saat file di-drag di atas area
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => {
-                dropZone.classList.add('border-blue-600', 'bg-blue-50', 'dark:bg-gray-700');
-            }, false);
-        });
 
-        // Menghilangkan highlight saat file meninggalkan area
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => {
-                dropZone.classList.remove('border-blue-600', 'bg-blue-50', 'dark:bg-gray-700');
-            }, false);
-        });
+        // ===================================================
+        //          LOADING BUTTON SCRIPT (Bagian Baru)
+        // ===================================================
+        const summaryForm = document.querySelector('form');
+        const summaryBtn = document.getElementById('summary-btn');
+        const btnLoader = document.getElementById('btn-loader');
+        const btnText = document.getElementById('btn-text');
 
-        // Menangani file yang di-drop
-        dropZone.addEventListener('drop', handleDrop, false);
+        if (summaryForm && summaryBtn) {
+            summaryForm.addEventListener('submit', function() {
+                // Nonaktifkan tombol untuk mencegah klik ganda
+                summaryBtn.disabled = true;
 
-        function handleDrop(e) {
-            const dt = e.dataTransfer;
-            const files = dt.files;
+                // Tampilkan ikon loading dan hapus kelas 'hidden'
+                btnLoader.classList.remove('hidden');
 
-            // Memasukkan file yang di-drop ke dalam input file tersembunyi
-            fileInput.files = files;
-
-            // Menampilkan nama file yang dipilih
-            if (files.length > 0) {
-                fileInfo.textContent = `File selected: ${files[0].name}`;
-            }
+                // Ubah teks tombol
+                btnText.textContent = 'Summarizing...';
+            });
         }
 
-        // Menampilkan nama file jika dipilih lewat tombol "Choose File"
-        fileInput.addEventListener('change', function() {
-            if (this.files.length > 0) {
-                fileInfo.textContent = `File selected: ${this.files[0].name}`;
-            } else {
-                fileInfo.textContent = '';
-            }
-        });
     });
 </script>
 @endsection

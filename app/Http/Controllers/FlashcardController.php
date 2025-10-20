@@ -66,4 +66,11 @@ class FlashcardController extends Controller
         $flashcardSet->load('flashcards');
         return view('flashcards.show', compact('flashcardSet'));
     }
-}
+
+    public function destroy(FlashcardSet $flashcardSet)
+{
+    // Berkat onDelete('cascade') di migrasi, semua kartu terkait akan ikut terhapus
+    $flashcardSet->delete();
+
+    return redirect()->route('flashcards.index')->with('success', 'Flashcard set has been deleted successfully.');
+}}

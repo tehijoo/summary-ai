@@ -33,6 +33,8 @@ Route::get('/qna', [LLMController::class, 'qnaIndex'])->name('qna.index');
 Route::post('/qna/upload', [LLMController::class, 'qnaUpload'])->name('qna.upload');
 Route::get('/qna/chat/{document}', [LLMController::class, 'qnaChat'])->name('qna.chat');
 Route::post('/qna/chat/{document}', [LLMController::class, 'qnaAsk'])->name('qna.ask');
+Route::delete('/qna/documents/{document}', [App\Http\Controllers\LLMController::class, 'destroyDocument'])->name('qna.destroy');
 
 Route::post('/documents/{document}/generate-flashcards', [App\Http\Controllers\LLMController::class, 'generateFlashcards'])->name('documents.generate-flashcards');
 Route::post('/flashcards/ai-save', [App\Http\Controllers\LLMController::class, 'saveAiFlashcards'])->name('flashcards.ai-save');
+Route::delete('/flashcards/{flashcardSet}', [App\Http\Controllers\FlashcardController::class, 'destroy'])->name('flashcards.destroy');
