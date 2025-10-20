@@ -38,3 +38,5 @@ Route::delete('/qna/documents/{document}', [App\Http\Controllers\LLMController::
 Route::post('/documents/{document}/generate-flashcards', [App\Http\Controllers\LLMController::class, 'generateFlashcards'])->name('documents.generate-flashcards');
 Route::post('/flashcards/ai-save', [App\Http\Controllers\LLMController::class, 'saveAiFlashcards'])->name('flashcards.ai-save');
 Route::delete('/flashcards/{flashcardSet}', [App\Http\Controllers\FlashcardController::class, 'destroy'])->name('flashcards.destroy');
+// Add this route for securely generating flashcards
+Route::post('/ai/generate-flashcards/{document}', [\App\Http\Controllers\LLMController::class, 'generateFlashcardsFromDocument'])->name('ai.generate-flashcards');
