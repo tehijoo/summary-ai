@@ -1,42 +1,45 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="max-w-7xl mx-auto">
-    <div class="mb-8">
-        <a href="{{ route('qna.index') }}" class="flex items-center text-gray-500 dark:text-gray-300 hover:text-blue-600 dark:hover:text-white transition-colors">
-            <span class="material-icons mr-2">arrow_back</span>
-            Back to Document List
+{{-- Hapus div pembungkus 'max-w-7xl' agar padding dari layout utama berlaku --}}
+<div>
+    <div class="flex flex-wrap justify-between items-center mb-8 gap-4">
+        {{-- Tombol Kembali --}}
+        <a href="{{ route('qna.index') }}" class="flex items-center text-text-light-secondary dark:text-dark-secondary hover:text-primary dark:hover:text-primary transition-colors">
+            <span class="material-icons-outlined mr-2">arrow_back</span>
+            <span>Back to Document List</span>
         </a>
     </div>
-
+    
+    {{-- Layout 2 Kolom --}}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
-        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border dark:border-gray-700">
-            <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-1">Document Content</h3>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ $document->original_filename }}</p>
-            <div class="prose dark:prose-invert max-w-none text-sm h-[70vh] overflow-y-auto p-4 bg-gray-50 dark:bg-gray-900 rounded">
+        
+        <div class="bg-surface-light dark:bg-surface-dark p-6 rounded-xl border border-border-light dark:border-border-dark h-[80vh] flex flex-col">
+            <h3 class="text-2xl font-bold text-text-light-primary dark:text-dark-primary mb-1">Document Content 📄</h3>
+            <p class="text-sm text-text-light-secondary dark:text-dark-secondary mb-4 break-words">{{ $document->original_filename }}</p>
+            <div class="prose dark:prose-invert max-w-none text-text-light-primary dark:text-gray-200 text-sm flex-grow overflow-y-auto p-4 bg-background-light dark:bg-background-dark rounded-lg">
                 {{ $document->content }}
             </div>
         </div>
 
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 flex flex-col h-[80vh]">
-            <div class="p-4 border-b dark:border-gray-700">
-                <h3 class="text-xl font-bold text-gray-800 dark:text-white">Ask a Question</h3>
+        <div class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark flex flex-col h-[80vh]">
+            <div class="p-6 border-b border-border-light dark:border-border-dark">
+                <h3 class="text-2xl font-bold text-text-light-primary dark:text-dark-primary">Ask a Question 💬</h3>
             </div>
-
+            
             <div id="chat-log" class="flex-grow p-6 space-y-4 overflow-y-auto">
                 <div class="flex">
-                    <div class="bg-blue-500 text-white p-3 rounded-lg max-w-md">
+                    <div class="bg-primary text-white p-3 rounded-lg max-w-md">
                         <p>Hello! Ask me anything about this document.</p>
                     </div>
                 </div>
             </div>
 
-            <div class="p-4 border-t dark:border-gray-700">
-                <form id="qna-form" class="flex items-center space-x-2">
-                    <input type="text" name="question" placeholder="Type your question here..." class="block w-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600 rounded-full py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500" required autocomplete="off">
-                    <button type="submit" class="bg-blue-600 text-white p-3 rounded-full hover:bg-blue-700 transition-colors flex-shrink-0">
-                        <span class="material-icons">send</span>
+            <div class="p-6 border-t border-border-light dark:border-border-dark">
+                <form id="qna-form" class="flex items-center space-x-3">
+                    <input type="text" name="question" placeholder="Type your question here..." class="block w-full bg-background-light dark:bg-background-dark border-border-light dark:border-border-dark rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-primary text-text-light-primary dark:text-dark-primary" required autocomplete="off">
+                    <button type="submit" class="bg-primary text-white p-3 rounded-lg hover:bg-blue-600 transition-colors flex-shrink-0">
+                        <span class="material-icons-outlined">send</span>
                     </button>
                 </form>
             </div>

@@ -5,43 +5,33 @@
 <style>
     .flashcard { perspective: 1000px; }
     .card-inner {
-        position: relative;
-        width: 100%;
-        height: 100%;
-        transition: transform 0.6s;
-        transform-style: preserve-3d;
+        position: relative; width: 100%; height: 100%;
+        transition: transform 0.6s; transform-style: preserve-3d;
     }
-    .is-flipped {
-        transform: rotateY(180deg);
-    }
+    .is-flipped { transform: rotateY(180deg); }
     .card-front, .card-back {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        -webkit-backface-visibility: hidden; /* Safari */
-        backface-visibility: hidden;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 2rem;
-        border-radius: 0.5rem; /* rounded-lg */
+        position: absolute; width: 100%; height: 100%;
+        -webkit-backface-visibility: hidden; backface-visibility: hidden;
+        display: flex; align-items: center; justify-content: center;
+        padding: 2rem; border-radius: 0.75rem; /* rounded-xl */
     }
-    .card-back {
-        transform: rotateY(180deg);
-    }
+    .card-back { transform: rotateY(180deg); }
 </style>
 
-<div class="max-w-4xl mx-auto">
-        <div class="mb-8">
-            <a href="{{ route('flashcards.index') }}" class="flex items-center text-gray-500 dark:text-gray-300 hover:text-blue-600 dark:hover:text-white transition-colors">
-                <span class="material-icons mr-2">arrow_back</span>
-                Back to All Sets
-            </a>
-        </div>
-        
+{{-- Hapus div pembungkus (max-w-4xl) agar padding dari app.blade.php berlaku --}}
+<div>
+    <div class="flex flex-wrap justify-between items-center mb-8 gap-4">
+        {{-- Tombol Kembali --}}
+        <a href="{{ route('flashcards.index') }}" class="flex items-center text-text-light-secondary dark:text-dark-secondary hover:text-primary dark:hover:text-primary transition-colors">
+            <span class="material-icons-outlined mr-2">arrow_back</span>
+            <span>Back to All Sets</span>
+        </a>
+    </div>
+    
+    <div class="max-w-2xl mx-auto"> {{-- Batasi lebar kontainer kartu agar fokus --}}
         <div class="mb-12 text-center">
-            <h2 class="text-3xl font-bold text-gray-800 dark:text-white">{{ $flashcardSet->title }}</h2>
-            <p class="text-gray-500 dark:text-gray-300 mt-2">{{ $flashcardSet->description }}</p>
+            <h2 class="text-3xl font-bold text-text-light-primary dark:text-dark-primary">{{ $flashcardSet->title }} 🃏</h2>
+            <p class="text-text-light-secondary dark:text-dark-secondary mt-2">{{ $flashcardSet->description }}</p>
         </div>
 
         @if($flashcardSet->flashcards->count() > 0)
@@ -49,10 +39,10 @@
                 @foreach($flashcardSet->flashcards as $index => $card)
                 <div class="flashcard h-80 w-full cursor-pointer {{ $index > 0 ? 'hidden' : '' }}" data-index="{{ $index }}">
                     <div class="card-inner">
-                        <div class="card-front bg-white dark:bg-gray-800 shadow-lg border dark:border-gray-700">
-                            <h3 class="text-4xl font-bold text-gray-800 dark:text-white text-center">{{ $card->term }}</h3>
+                        <div class="card-front bg-surface-light dark:bg-surface-dark shadow-xl border border-border-light dark:border-border-dark">
+                            <h3 class="text-4xl font-bold text-text-light-primary dark:text-dark-primary text-center">{{ $card->term }}</h3>
                         </div>
-                        <div class="card-back bg-blue-600 text-white shadow-lg">
+                        <div class="card-back bg-primary text-white shadow-xl">
                             <p class="text-2xl text-center">{{ $card->definition }}</p>
                         </div>
                     </div>
@@ -61,18 +51,18 @@
             </div>
 
             <div class="flex items-center justify-between mt-8">
-                <button id="prev-btn" class="p-3 rounded-full bg-white dark:bg-gray-800 border dark:border-gray-700 text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50">
-                    <span class="material-icons">chevron_left</span>
+                <button id="prev-btn" class="p-3 rounded-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-light-primary dark:text-dark-primary hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span class="material-icons-outlined">chevron_left</span>
                 </button>
-                <div id="progress-text" class="font-medium text-gray-500 dark:text-gray-400">
+                <div id="progress-text" class="font-medium text-text-light-secondary dark:text-dark-secondary">
                     1 / {{ $flashcardSet->flashcards->count() }}
                 </div>
-                <button id="next-btn" class="p-3 rounded-full bg-white dark:bg-gray-800 border dark:border-gray-700 text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50">
-                    <span class="material-icons">chevron_right</span>
+                <button id="next-btn" class_ ="p-3 rounded-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-light-primary dark:text-dark-primary hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span class="material-icons-outlined">chevron_right</span>
                 </button>
             </div>
         @else
-            <p class="text-center text-gray-500 dark:text-gray-400">This flashcard set is empty.</p>
+            <p class="text-center text-text-light-secondary dark:text-dark-secondary">This flashcard set is empty. 🤔</p>
         @endif
     </div>
 

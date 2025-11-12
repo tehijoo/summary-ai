@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="max-w-4xl mx-auto">
+<div class="container mx-auto px-6 py-8">
     {{-- Notifikasi --}}
     @if(session('success'))
         <div class="mb-6 p-4 text-sm text-green-800 rounded-lg bg-green-50 dark:bg-surface-dark dark:text-green-400 border border-green-200 dark:border-green-600" role="alert">
@@ -17,25 +17,23 @@
     <div class="flex flex-wrap justify-between items-center mb-8 gap-4">
         {{-- Tombol Kembali --}}
         <a href="{{ route('projects.history') }}" class="flex items-center text-text-light-secondary dark:text-dark-secondary hover:text-primary dark:hover:text-primary transition-colors">
-            <span class="material-icons mr-2">arrow_back</span>
-            Back to Recent Projects
+            <span class="material-icons-outlined mr-2">arrow_back</span>
+            <span>Back to Recent Projects</span>
         </a>
 
-        {{-- KONTENER UNTUK TOMBOL AKSI --}}
+        {{-- Tombol Aksi --}}
         @if($conversation->document)
             <div class="flex items-center gap-4">
-                {{-- Tombol Q&A --}}
-                <a href="{{ route('qna.chat', $conversation->document) }}" class="bg-primary text-white font-bold py-2 px-6 rounded-lg hover:bg-primary/90 transition-colors flex items-center">
-                    <span class="material-icons mr-2">quiz</span>
-                    Start Q&A
+                <a href="{{ route('qna.chat', $conversation->document) }}" class="bg-primary text-white font-bold py-2.5 px-6 rounded-lg hover:bg-blue-600 transition-colors duration-300 flex items-center">
+                    <span class="material-icons-outlined mr-2">quiz</span>
+                    <span>Start Q&A 💬</span>
                 </a>
                 
-                {{-- KUNCI PERBAIKAN: Kembali menggunakan form sederhana untuk memanggil backend --}}
                 <form action="{{ route('documents.generate-flashcards', $conversation->document) }}" method="POST">
                     @csrf
-                    <button type="submit" class="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-light-primary dark:text-dark-primary font-bold py-2 px-6 rounded-lg hover:border-primary dark:hover:border-primary transition-colors flex items-center">
-                        <span class="material-icons mr-2 text-primary">auto_awesome</span>
-                        Generate Flashcards
+                    <button type="submit" class="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-light-primary dark:text-dark-primary font-bold py-2.5 px-6 rounded-lg hover:border-primary dark:hover:border-primary transition-colors duration-300 flex items-center">
+                        <span class="material-icons-outlined mr-2 text-primary">auto_awesome</span>
+                        <span>Generate Flashcards ✨</span>
                     </button>
                 </form>
             </div>
@@ -43,17 +41,17 @@
     </div>
 
     {{-- Tampilan Detail Ringkasan --}}
-    <div class="bg-surface-light dark:bg-surface-dark p-8 rounded-lg shadow-sm border border-border-light dark:border-border-dark">
+    <div class="bg-surface-light dark:bg-surface-dark p-8 rounded-xl border border-border-light dark:border-border-dark">
         <p class="text-sm text-text-light-secondary dark:text-dark-secondary mb-4">
             Created on: {{ $conversation->created_at->format('d M Y, h:i A') }}
         </p>
-        <h3 class="text-2xl font-bold text-text-light-primary dark:text-dark-primary mb-6">Summary</h3>
-        <div class="prose dark:prose-invert max-w-none" style="white-space: pre-wrap;">
+        <h3 class="text-3xl font-bold text-text-light-primary dark:text-dark-primary mb-6">Summary 📝</h3>
+        <div class="prose dark:prose-invert max-w-none text-text-light-primary dark:text-gray-200" style="white-space: pre-wrap;">
             {!! $conversation->response !!}
         </div>
         <hr class="my-6 border-border-light dark:border-border-dark">
-        <h3 class="text-2xl font-bold text-text-light-primary dark:text-dark-primary mb-6">Original Input</h3>
-        <div class="prose dark:prose-invert max-w-none bg-background-light dark:bg-background-dark p-4 rounded" style="white-space: pre-wrap; max-height: 400px; overflow-y: auto;">
+        <h3 class="text-3xl font-bold text-text-light-primary dark:text-dark-primary mb-6">Original Input 📄</h3>
+        <div class="prose dark:prose-invert max-w-none bg-background-light dark:bg-background-dark p-4 rounded-lg text-text-light-primary dark:text-gray-200" style="white-space: pre-wrap; max-height: 400px; overflow-y: auto;">
             {{ $conversation->input }}
         </div>
     </div>

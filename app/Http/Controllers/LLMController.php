@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
+use Illuminate\Support\Facades\Auth;
 
 use App\Models\Conversation;
 use App\Models\Document;
@@ -62,15 +63,26 @@ class LLMController extends Controller
         $parsedown = new \Parsedown();
         $summaryHtml = $parsedown->text($summaryMarkdown);
 
+        if (Auth::check()) {
+
+        // 1. Simpan dokumen
+        $document = Document::create([
+            'original_filename' => $originalName,
+            'content' => $textContent,
+            // 'user_id' => Auth::id() // Opsional, jika Anda ingin melangkah lebih jauh
+        ]);
+
+        // 2. Simpan ringkasan
         Conversation::create([
             'document_id' => $document->id,
             'mode' => 'summarize',
             'input' => $textContent,
             'response' => $summaryMarkdown,
+            // 'user_id' => Auth::id() // Opsional
         ]);
-
+        }
         return redirect('/chat')->with('response', $summaryHtml)->withInput();
-    }
+}
 
     // --- FITUR RIWAYAT (RECENT PROJECTS) ---
     public function history()

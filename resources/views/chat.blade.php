@@ -1,79 +1,72 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="max-w-4xl mx-auto">
-    <div class="mb-12">
-        {{-- Perubahan: Tambah warna teks untuk light/dark mode --}}
-        <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Upload Your Document</h2>
-        <p class="text-gray-500 dark:text-gray-300 mt-2">Upload your documents to create AI-powered summaries. Supported formats: PDF only</p>
+<div>
+    <div class="text-center mb-12">
+        <h2 class="text-4xl font-bold text-gray-900 dark:text-white mb-3">Upload Your Document</h2>
+        <p class="text-lg text-gray-500 dark:text-gray-400">Upload your documents to create AI-powered summaries. Supported formats: PDF only</p>
     </div>
 
+    {{-- Form Laravel yang fungsional --}}
     <form method="POST" action="{{ url('/ask') }}" enctype="multipart/form-data">
         @csrf
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-
-            {{-- KARTU 1: INPUT TEKS --}}
-            {{-- Perubahan: Tambah warna latar, border, dan teks untuk dark mode --}}
-            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border dark:border-gray-700 flex flex-col">
-                <label for="text" class="block text-lg font-medium text-gray-800 dark:text-white mb-4">Paste Your Text</label>
-                <textarea name="text" class="w-full flex-grow p-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border dark:border-gray-600 rounded-lg" rows="10" placeholder="Enter your content here...">{{ old('text') }}</textarea>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+            {{-- KARTU PASTE YOUR TEXT --}}
+            <div class="flex flex-col gap-6">
+                <div class="bg-white dark:bg-surface-dark p-8 rounded-xl border border-gray-200 dark:border-gray-800 relative focus-within:border-primary transition-all duration-300 dark:animate-pulse-glow">
+                    <label class="block text-lg font-semibold mb-3 text-gray-900 dark:text-white" for="text">Paste Your Text</label>
+                    <textarea name="text" id="text" class="w-full bg-transparent border-gray-300 dark:border-gray-700 rounded-lg placeholder-gray-400 dark:placeholder-gray-500 focus:ring-primary focus:border-primary transition-colors" placeholder="Enter your content here..." rows="12">{{ old('text') }}</textarea>
+                </div>
+                
+                {{-- TOMBOL CREATE SUMMARY --}}
+                <button type="submit" id="summary-btn" class="w-full bg-primary text-white font-bold py-4 px-6 rounded-lg hover:bg-blue-600 transition-colors duration-300 shadow-lg shadow-blue-500/20 flex items-center justify-center">
+                    <span id="btn-loader" class="material-icons-outlined animate-spin mr-2 hidden">hourglass_top</span>
+                    <span id="btn-text">Create Summary</span>
+                </button>
             </div>
 
-            {{-- KARTU 2: UPLOAD FILE --}}
-            <div id="drop-zone" class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border-2 border-dashed dark:border-gray-700 flex flex-col items-center justify-center text-center transition-colors duration-300">
-                <div class="bg-blue-100 dark:bg-gray-700 p-4 rounded-full mb-4">
-                    <span class="material-icons text-blue-600 dark:text-blue-300" style="font-size: 36px;">cloud_upload</span>
+            {{-- KARTU UPLOAD A FILE --}}
+            <div id="drop-zone" class="bg-white dark:bg-surface-dark p-8 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 text-center flex flex-col items-center justify-center h-full hover:border-primary dark:hover:border-primary transition-all duration-300 dark:animate-pulse-glow">
+                <div class="mb-4">
+                    <span class="material-icons-outlined text-5xl text-primary bg-blue-100 dark:bg-primary/20 p-4 rounded-full">cloud_upload</span>
                 </div>
-                <p class="text-xl font-medium text-gray-800 dark:text-white">Upload a File</p>
-                <p class="text-gray-500 dark:text-gray-400 my-2">or drag and drop</p>
-                <label for="pdf" class="mt-4 cursor-pointer bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors inline-block">Choose PDF File</label>
-                <input type="file" name="pdf" id="pdf" class="hidden" accept=".pdf,.doc,.docx,.txt">
-
-                {{-- Tambahkan elemen ini untuk menampilkan nama file --}}
+                <h3 class="text-xl font-semibold mb-1 text-gray-900 dark:text-white">Upload a File</h3>
+                <p class="text-gray-500 dark:text-gray-400 mb-6">or drag and drop</p>
+                <label for="pdf" class="bg-primary text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-600 transition-colors duration-300 cursor-pointer">
+                    Choose PDF File
+                </label>
+                {{-- Input file tersembunyi yang fungsional --}}
+                <input type="file" name="pdf" id="pdf" class="hidden" accept=".pdf">
                 <p id="file-info" class="text-sm text-gray-500 dark:text-gray-400 mt-4 h-5"></p> 
-
                 <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">Max file size: 10MB</p>
             </div>
-
         </div>
-
-        <div class="text-center">
-    <button type="submit" id="summary-btn" class="bg-blue-600 text-white font-bold py-3 px-10 rounded-lg hover:bg-blue-700 transition-colors text-lg flex items-center justify-center">
-        {{-- Ikon loading, awalnya disembunyikan --}}
-        <span id="btn-loader" class="material-icons animate-spin mr-2 hidden">hourglass_top</span>
-        <span id="btn-text">Create Summary</span>
-    </button>
-</div>
     </form>
 
+    {{-- HASIL SUMMARY (Tidak berubah, tapi akan mengikuti tema) --}}
     @if(session('response'))
         <div class="mt-12">
-            <h3 class="text-2xl font-bold text-gray-800 dark:text-white">Most Recent Summary</h3>
-            
-            {{-- Perubahan: Tambah kelas 'prose' dan gunakan sintaks {!! !!} --}}
-            <div class="mt-6 bg-green-50 dark:bg-gray-800 border border-green-200 dark:border-gray-700 text-green-800 dark:text-gray-200 p-6 rounded-lg prose dark:prose-invert max-w-none" style="white-space: pre-wrap;">
+            <h3 class_ ="text-3xl font-bold text-gray-900 dark:text-white mb-6">Most Recent Summary</h3>
+            <div class="bg-white dark:bg-surface-dark p-8 rounded-xl border border-gray-200 dark:border-gray-800 prose dark:prose-invert max-w-none" style="white-space: pre-wrap;">
                 {!! session('response') !!}
             </div>
-
         </div>
     @endif
 </div>
 @endsection
 
 @section('scripts')
+{{-- Skrip fungsionalitas Anda tidak perlu diubah, cukup salin dari kode sebelumnya --}}
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         
-        // ===================================================
-        //           DRAG AND DROP SCRIPT (Sudah Ada)
-        // ===================================================
+        // --- DRAG AND DROP SCRIPT ---
         const dropZone = document.getElementById('drop-zone');
         const fileInput = document.getElementById('pdf');
         const fileInfo = document.getElementById('file-info');
 
         if (dropZone) {
-            // Mencegah browser membuka file secara default saat di-drag
             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
                 dropZone.addEventListener(eventName, preventDefaults, false);
             });
@@ -83,21 +76,18 @@
                 e.stopPropagation();
             }
 
-            // Memberi highlight saat file di-drag di atas area
             ['dragenter', 'dragover'].forEach(eventName => {
                 dropZone.addEventListener(eventName, () => {
-                    dropZone.classList.add('border-blue-600', 'bg-blue-50', 'dark:bg-gray-700');
+                    dropZone.classList.add('border-primary', 'dark:border-primary', 'bg-blue-50', 'dark:bg-primary/10');
                 }, false);
             });
 
-            // Menghilangkan highlight saat file meninggalkan area
             ['dragleave', 'drop'].forEach(eventName => {
                 dropZone.addEventListener(eventName, () => {
-                    dropZone.classList.remove('border-blue-600', 'bg-blue-50', 'dark:bg-gray-700');
+                    dropZone.classList.remove('border-primary', 'dark:border-primary', 'bg-blue-50', 'dark:bg-primary/10');
                 }, false);
             });
 
-            // Menangani file yang di-drop
             dropZone.addEventListener('drop', function (e) {
                 const dt = e.dataTransfer;
                 const files = dt.files;
@@ -107,7 +97,6 @@
                 }
             }, false);
 
-            // Menampilkan nama file jika dipilih lewat tombol "Choose File"
             fileInput.addEventListener('change', function() {
                 if (this.files.length > 0) {
                     fileInfo.textContent = `File selected: ${this.files[0].name}`;
@@ -117,10 +106,7 @@
             });
         }
 
-
-        // ===================================================
-        //          LOADING BUTTON SCRIPT (Bagian Baru)
-        // ===================================================
+        // --- LOADING BUTTON SCRIPT ---
         const summaryForm = document.querySelector('form');
         const summaryBtn = document.getElementById('summary-btn');
         const btnLoader = document.getElementById('btn-loader');
@@ -128,13 +114,8 @@
 
         if (summaryForm && summaryBtn) {
             summaryForm.addEventListener('submit', function() {
-                // Nonaktifkan tombol untuk mencegah klik ganda
                 summaryBtn.disabled = true;
-
-                // Tampilkan ikon loading dan hapus kelas 'hidden'
                 btnLoader.classList.remove('hidden');
-
-                // Ubah teks tombol
                 btnText.textContent = 'Summarizing...';
             });
         }
