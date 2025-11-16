@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Flashcard;
 use App\Models\FlashcardSet;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class FlashcardController extends Controller
 {
@@ -14,7 +14,11 @@ class FlashcardController extends Controller
     public function index()
     {
         // Menggunakan withCount('flashcards') lebih efisien daripada memuat semua relasi
-        $flashcardSets = FlashcardSet::withCount('flashcards')->latest()->get();
+        $flashcardSets = auth()->user()
+            ->flashcardSets()
+            ->withCount('flashcards')
+            ->latest()
+            ->get();
         return view('flashcards.index', compact('flashcardSets'));
     }
 
@@ -40,7 +44,7 @@ class FlashcardController extends Controller
         ]);
 
         // 1. Buat Set Flashcard terlebih dahulu
-        $flashcardSet = FlashcardSet::create([
+        $flashcardSet = auth()->user()->flashcardSets()->create([
             'title' => $request->title,
             'description' => $request->description,
         ]);
