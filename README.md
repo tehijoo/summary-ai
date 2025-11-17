@@ -52,9 +52,8 @@ php artisan key:generate
 ```
 **Buka file .env yang baru dibuat dan tambahkan URL API serta API Key Mistral Anda.**
 ```
-# Tambahkan dua baris ini di bagian bawah file .env
-LLM_API_URL=https://api.mistral.ai/v1/chat/completions
-MISTRAL_API_KEY=[KEY_API]
+# Konfigurasikan baris ini di file .env
+GEMINI_API_KEY=[KEY_API]
 ```
 
 
