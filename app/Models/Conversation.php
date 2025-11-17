@@ -26,4 +26,9 @@ class Conversation extends Model
     {
         return $this->belongsTo(Document::class);
     }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 }

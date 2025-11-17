@@ -42,11 +42,6 @@ class LLMController extends Controller
 
         $textContent = preg_replace('/\s+/', ' ', trim($textContent));
 
-        $document = Document::create([
-            'original_filename' => $originalName,
-            'content' => $textContent,
-        ]);
-
         $apiKey = env('GEMINI_API_KEY');
         $apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$apiKey}";
         $prompt = "Anda adalah seorang ahli yang pandai membuat ringkasan teks. Tolong buatkan ringkasan dari teks berikut. Berikan ringkasan dengan bahasa yang baik dan jelas dan memuat poin dari teks:\n\n" . Str::limit($textContent, 30000, '');
@@ -69,7 +64,7 @@ class LLMController extends Controller
         $document = Document::create([
             'original_filename' => $originalName,
             'content' => $textContent,
-            // 'user_id' => Auth::id() // Opsional, jika Anda ingin melangkah lebih jauh
+            'user_id' => Auth::id()
         ]);
 
         // 2. Simpan ringkasan
@@ -78,7 +73,7 @@ class LLMController extends Controller
             'mode' => 'summarize',
             'input' => $textContent,
             'response' => $summaryMarkdown,
-            // 'user_id' => Auth::id() // Opsional
+            'user_id' => Auth::id()
         ]);
         }
         return redirect('/chat')->with('response', $summaryHtml)->withInput();
@@ -87,7 +82,7 @@ class LLMController extends Controller
     // --- FITUR RIWAYAT (RECENT PROJECTS) ---
     public function history()
     {
-        $conversations = Conversation::latest()->get();
+        $conversations = Conversation::where('user_id', Auth::id())->latest()->get();
         return view('recent-projects', compact('conversations'));
     }
 
@@ -106,7 +101,7 @@ class LLMController extends Controller
     // --- FITUR Q&A DENGAN DOKUMEN ---
     public function qnaIndex()
     {
-        $documents = Document::latest()->get();
+        $documents = Document::where('user_id', Auth::id())->latest()->get();
         return view('qna.index', compact('documents'));
     }
 
@@ -131,6 +126,7 @@ class LLMController extends Controller
         $document = Document::create([
             'original_filename' => $originalName,
             'content' => $textContent,
+            'user_id' => Auth::id()
         ]);
 
         return redirect()->route('qna.chat', $document);
@@ -201,6 +197,7 @@ class LLMController extends Controller
             $flashcardSet = FlashcardSet::create([
                 'title' => 'AI Flashcards for: ' . Str::limit($document->original_filename, 50),
                 'description' => 'Automatically generated from a document.',
+                'user_id' => Auth::id()
             ]);
 
             foreach ($flashcardsData as $cardData) {

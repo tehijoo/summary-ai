@@ -48,4 +48,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(FlashcardSet::class);
     }
+
+    public function documents(): HasMany
+    {
+        return $this->hasMany(Document::class);
+    }
+
+    public function conversations(): HasMany
+    {
+        return $this->hasMany(Conversation::class);
+    }
 }
