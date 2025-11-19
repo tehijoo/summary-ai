@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Flashcard;
 use App\Models\FlashcardSet;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class FlashcardController extends Controller
 {
@@ -13,10 +14,12 @@ class FlashcardController extends Controller
      */
     public function index()
     {
-        // Menggunakan withCount('flashcards') lebih efisien daripada memuat semua relasi
-        $flashcardSets = FlashcardSet::withCount('flashcards')->latest()->get();
-        return view('flashcards.index', compact('flashcardSets'));
-    }
+    $flashcardSets = FlashcardSet::where('user_id', Auth::id()) // Hanya punya sendiri
+                                 ->withCount('flashcards')
+                                 ->latest()
+                                 ->get();
+    return view('flashcards.index', compact('flashcardSets'));
+}
 
     /**
      * Menampilkan formulir untuk membuat set flashcard baru.
@@ -41,6 +44,7 @@ class FlashcardController extends Controller
 
         // 1. Buat Set Flashcard terlebih dahulu
         $flashcardSet = FlashcardSet::create([
+            'user_id' => Auth::id(),
             'title' => $request->title,
             'description' => $request->description,
         ]);
@@ -62,6 +66,10 @@ class FlashcardController extends Controller
      */
     public function show(FlashcardSet $flashcardSet)
     {
+        // CEK KEAMANAN: Apakah ini punya user yang login?
+        if ($flashcardSet->user_id !== Auth::id()) {
+            abort(403, 'Unauthorized action.'); // Tolak akses
+        }
         // Laravel akan otomatis memuat set flashcard beserta kartu-kartunya
         $flashcardSet->load('flashcards');
         return view('flashcards.show', compact('flashcardSet'));
@@ -69,6 +77,10 @@ class FlashcardController extends Controller
 
     public function destroy(FlashcardSet $flashcardSet)
 {
+    // CEK KEAMANAN: Apakah ini punya user yang login?
+    if ($flashcardSet->user_id !== Auth::id()) {
+        abort(403, 'Unauthorized action.'); // Tolak akses
+    }
     // Berkat onDelete('cascade') di migrasi, semua kartu terkait akan ikut terhapus
     $flashcardSet->delete();
 

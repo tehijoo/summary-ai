@@ -10,7 +10,7 @@ class FlashcardSet extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['title', 'description'];
+    protected $fillable = ['user_id', 'title', 'description'];
 
     /**
      * Sebuah Set memiliki banyak Flashcard.

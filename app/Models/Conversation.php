@@ -13,6 +13,7 @@ class Conversation extends Model
      * @var array<int, string>
      */
     protected $fillable = [
+        'user_id',
         'document_id', // <--- PASTIKAN BARIS INI ADA
         'mode',
         'input',

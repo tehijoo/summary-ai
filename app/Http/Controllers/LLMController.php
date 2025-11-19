@@ -1,8 +1,8 @@
 <?php
 
 namespace App\Http\Controllers;
-use Illuminate\Support\Facades\Auth;
 
+use Illuminate\Support\Facades\Auth;
 use App\Models\Conversation;
 use App\Models\Document;
 use App\Models\FlashcardSet;
@@ -42,63 +42,68 @@ class LLMController extends Controller
 
         $textContent = preg_replace('/\s+/', ' ', trim($textContent));
 
-        $document = Document::create([
-            'original_filename' => $originalName,
-            'content' => $textContent,
-        ]);
+        // Dokumen tidak perlu dibuat di sini, ia akan dibuat di bawah HANYA jika Auth::check()
+        // Ini menghindari pembuatan duplikat
+        // $document = Document::create([ ... ]);
 
-        $apiKey = env('GEMINI_API_KEY');
-        $apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$apiKey}";
         $prompt = "Anda adalah seorang ahli yang pandai membuat ringkasan teks. Tolong buatkan ringkasan dari teks berikut. Berikan ringkasan dengan bahasa yang baik dan jelas dan memuat poin dari teks:\n\n" . Str::limit($textContent, 30000, '');
 
-        $response = Http::timeout(180)->post($apiUrl, [
-            'contents' => [['parts' => [['text' => $prompt]]]]
-        ]);
+        // --- START OLLAMA MIGRATION ---
+        $apiResponse = $this->callOllamaAPI($prompt);
 
-        if ($response->failed()) {
-            return back()->with('response', 'Failed to connect to the Gemini API. Error: ' . $response->body());
+        if (!$apiResponse->success) {
+            return back()->with('response', 'Failed to connect to the OLLAMA API. Error: ' . $apiResponse->body);
         }
 
-        $summaryMarkdown = $response->json('candidates.0.content.parts.0.text') ?? 'No valid response from model.';
+        $summaryMarkdown = $apiResponse->text ?? 'No valid response from model.';
+        // --- END OLLAMA MIGRATION ---
+
+
         $parsedown = new \Parsedown();
         $summaryHtml = $parsedown->text($summaryMarkdown);
 
         if (Auth::check()) {
+            // 1. Simpan dokumen
+            $document = Document::create([
+                'user_id' => Auth::id(),
+                'original_filename' => $originalName,
+                'content' => $textContent,
+            ]);
 
-        // 1. Simpan dokumen
-        $document = Document::create([
-            'original_filename' => $originalName,
-            'content' => $textContent,
-            // 'user_id' => Auth::id() // Opsional, jika Anda ingin melangkah lebih jauh
-        ]);
-
-        // 2. Simpan ringkasan
-        Conversation::create([
-            'document_id' => $document->id,
-            'mode' => 'summarize',
-            'input' => $textContent,
-            'response' => $summaryMarkdown,
-            // 'user_id' => Auth::id() // Opsional
-        ]);
+            // 2. Simpan ringkasan
+            Conversation::create([
+                'user_id' => Auth::id(),
+                'document_id' => $document->id,
+                'mode' => 'summarize',
+                'input' => $textContent,
+                'response' => $summaryMarkdown,
+            ]);
         }
+
         return redirect('/chat')->with('response', $summaryHtml)->withInput();
-}
+    }
 
     // --- FITUR RIWAYAT (RECENT PROJECTS) ---
     public function history()
     {
-        $conversations = Conversation::latest()->get();
+        $conversations = Conversation::where('user_id', Auth::id())->latest()->get();
         return view('recent-projects', compact('conversations'));
     }
 
     public function show(Conversation $conversation)
     {
+        if ($conversation->user_id !== Auth::id()) {
+            abort(403);
+        }
         $conversation->load('document');
         return view('project-detail', compact('conversation'));
     }
-    
+
     public function destroyProject(Conversation $conversation)
     {
+        if ($conversation->user_id !== Auth::id()) {
+            abort(403);
+        }
         $conversation->delete();
         return redirect()->route('projects.history')->with('success', 'Project has been deleted successfully.');
     }
@@ -106,7 +111,7 @@ class LLMController extends Controller
     // --- FITUR Q&A DENGAN DOKUMEN ---
     public function qnaIndex()
     {
-        $documents = Document::latest()->get();
+        $documents = Document::where('user_id', Auth::id())->latest()->get();
         return view('qna.index', compact('documents'));
     }
 
@@ -129,6 +134,7 @@ class LLMController extends Controller
         }
 
         $document = Document::create([
+            'user_id' => Auth::id(), // Penting untuk privasi
             'original_filename' => $originalName,
             'content' => $textContent,
         ]);
@@ -138,67 +144,88 @@ class LLMController extends Controller
 
     public function qnaChat(Document $document)
     {
+        if ($document->user_id !== Auth::id()) {
+            abort(403);
+        }
         return view('qna.chat', compact('document'));
     }
 
     public function qnaAsk(Request $request, Document $document)
     {
+        if ($document->user_id !== Auth::id()) {
+            abort(403);
+        }
+
         $request->validate(['question' => 'required|string']);
         $question = $request->question;
         $context = Str::limit($document->content, 30000, '');
 
-        $apiKey = env('GEMINI_API_KEY');
-        $apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$apiKey}";
         $prompt = "Based on the following text, answer the question.\n\nText:\n\"{$context}\"\n\nQuestion: {$question}\n\nAnswer in Indonesian:";
-        
-        $response = Http::timeout(180)->post($apiUrl, [
-            'contents' => [['parts' => [['text' => $prompt]]]]
-        ]);
 
-        if ($response->failed()) {
-            return response()->json(['answer' => 'Sorry, I failed to connect to the Gemini API. Error: ' . $response->body()]);
+        // --- START OLLAMA MIGRATION ---
+        $apiResponse = $this->callOllamaAPI($prompt);
+
+        if (!$apiResponse->success) {
+            return response()->json(['answer' => 'Sorry, I failed to connect to the OLLAMA API. Error: ' . $apiResponse->body]);
         }
 
-        $answer = $response->json('candidates.0.content.parts.0.text') ?? 'Sorry, I could not find an answer.';
+        $answer = $apiResponse->text ?? 'Sorry, I could not find an answer.';
+        // --- END OLLAMA MIGRATION ---
+
         return response()->json(['answer' => $answer]);
     }
 
     public function destroyDocument(Document $document)
     {
+        if ($document->user_id !== Auth::id()) {
+            abort(403);
+        }
         $document->delete();
         return redirect()->route('qna.index')->with('success', 'Document has been deleted successfully.');
     }
-    
+
     // --- FITUR GENERATE FLASHCARD (SERVER-SIDE) ---
     public function generateFlashcards(Document $document)
     {
+        if ($document->user_id !== Auth::id()) {
+            abort(403);
+        }
+
         set_time_limit(300);
 
         try {
             $context = Str::limit($document->content, 2500, '');
+            // Prompt
             $prompt = "Berdasarkan teks berikut, buatlah satu set pertanyaan dan jawaban untuk flashcard. PENTING: Respons Anda HARUS HANYA berupa JSON array yang valid. Setiap objek harus memiliki kunci 'term' untuk pertanyaan dan 'definition' untuk jawaban. Jangan sertakan teks atau penjelasan lain sebelum atau sesudah JSON array. Buat antara 2 sampai 4 flashcard.\n\nContoh format: [{\"term\": \"Siapa nama tokoh utama?\", \"definition\": \"Arga.\"}]\n\nTeks:\n\"{$context}\"";
-            
-            $apiKey = env('GEMINI_API_KEY');
-            // Gunakan model Pro yang lebih kuat untuk tugas JSON
-            $apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key={$apiKey}";
 
-            $response = Http::timeout(180)->post($apiUrl, [
-                'contents' => [['parts' => [['text' => $prompt]]]]
-            ]);
+            // --- START OLLAMA MIGRATION ---
+            $apiResponse = $this->callOllamaAPI($prompt);
 
-            if ($response->failed()) {
-                throw new \Exception('The AI service failed to respond.');
+            if (!$apiResponse->success) {
+                throw new \Exception('The AI service failed to respond. Error: ' . $apiResponse->body);
             }
 
-            $aiResponseContent = $response->json('candidates.0.content.parts.0.text');
+            $aiResponseContent = $apiResponse->text;
+            // --- END OLLAMA MIGRATION ---
+
+
+            // Logika pembersihan JSON ini SANGAT PENTING untuk OLLAMA/Model Open Source,
+            // karena model mungkin masih membungkusnya dengan ```json
             $cleanedJsonString = trim(str_replace(['```json', '```'], '', $aiResponseContent));
+            // Kadang model Qwen menambahkan teks pembuka, kita coba cari array JSON [ ... ]
+            if (preg_match('/\[.*\]/s', $cleanedJsonString, $matches)) {
+                $cleanedJsonString = $matches[0];
+            }
+            
             $flashcardsData = json_decode($cleanedJsonString, true);
 
             if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new \Exception('The AI returned an invalid format.');
+                // Jika format JSON gagal, berikan pesan error yang lebih jelas
+                throw new \Exception('The AI returned an invalid format. Response: ' . $cleanedJsonString);
             }
 
             $flashcardSet = FlashcardSet::create([
+                'user_id' => Auth::id(), // Penting
                 'title' => 'AI Flashcards for: ' . Str::limit($document->original_filename, 50),
                 'description' => 'Automatically generated from a document.',
             ]);
@@ -210,9 +237,70 @@ class LLMController extends Controller
             }
 
             return redirect()->route('flashcards.show', $flashcardSet)->with('success', 'AI has successfully generated your flashcards!');
-
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }
+    }
+
+
+    /**
+     * =================================================================
+     * HELPER METHOD BARU UNTUK OLLAMA API (SENOPATI)
+     * =================================================================
+     */
+    private function callOllamaAPI(string $prompt)
+    {
+        // 1. Ambil konfigurasi dari file .env
+        $apiUrlBase = env('OLLAMA_API_URL');
+        if (!$apiUrlBase) {
+            return (object)[
+                'success' => false,
+                'body' => 'OLLAMA_API_URL is not set in your .env file.'
+            ];
+        }
+
+        // Endpoint Senopati biasanya /generate atau /api/generate
+        // Cek dokumentasi teman/kampus Anda. Default Ollama adalah /api/generate
+        // Tapi jika URL teman Anda berakhiran slash, kita sesuaikan.
+        $apiUrl = rtrim($apiUrlBase, '/') . '/generate'; 
+        
+        $model = env('OLLAMA_MODEL', 'qwen2.5:14b');
+        $temperature = (float) env('OLLAMA_TEMPERATURE', 0.1);
+
+        // 2. Susun payload sesuai standar OLLAMA
+        $payload = [
+            'model' => $model,
+            'prompt' => $prompt,
+            'temperature' => $temperature,
+            'stream' => false, // Kita matikan streaming agar mudah diolah
+        ];
+
+        // 3. (PENTING) Tambahkan 'format: json' jika prompt meminta JSON
+        if (str_contains(strtoupper($prompt), 'JSON')) {
+            $payload['format'] = 'json';
+        }
+
+        // 4. Lakukan panggilan API
+        // Tidak perlu WithToken karena Senopati biasanya IP-based atau internal network
+        // Jika butuh token, tambahkan ->withToken('...')
+        $response = Http::timeout(180)->post($apiUrl, $payload);
+
+        // 5. Tangani kegagalan
+        if ($response->failed()) {
+            return (object)['success' => false, 'body' => $response->body()];
+        }
+
+        // 6. Parsing respons OLLAMA
+        // Respons Ollama ada di key 'response'
+        $responseText = $response->json('response');
+
+        if ($responseText === null) {
+             return (object)[
+                'success' => false,
+                'body' => 'Invalid or empty response from OLLAMA. Full response: ' . $response->body()
+            ];
+        }
+
+        return (object)['success' => true, 'text' => $responseText];
     }
 }
