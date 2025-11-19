@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # 1. PHP-FPM Application Service
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Mount the code as a volume for development (optional for production, but convenient)
+    # If using volumes, remember to re-run 'composer install' locally if you change dependencies.
+    # volumes:
+    #   - .:/var/www/html:delegated
+    container_name: summary_ai_app
+    restart: unless-stopped
+    environment:
+      # These environment variables link to the 'db' service below
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-summary_ai_db}
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-mypassword}
+      
+      # Your API Key (ensure this is set in a local .env file)
+      GEMINI_API_KEY: ${GEMINI_API_KEY} 
+
+  # 2. Nginx Web Server Service
+  nginx:
+    image: nginx:stable-alpine
+    container_name: summary_ai_nginx
+    restart: unless-stopped
+    ports:
+      # --- THIS IS THE CHANGED LINE ---
+      - "80:80" # Map host port 80 to container port 80
+    volumes:
+      # Mount the public folder and the Nginx config
+      - .:/var/www/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app # Ensure the PHP app is running before Nginx
+
+  # 3. MySQL Database Service
+  db:
+    image: mysql:8.0
+    container_name: summary_ai_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-mypassword}
+      MYSQL_DATABASE: ${DB_DATABASE:-summary_ai_db}
+    # Persist data outside the container
+    volumes:
+      - dbdata:/var/lib/mysql
+
+volumes:
+  dbdata:
+    driver: local

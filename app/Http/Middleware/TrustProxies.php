@@ -3,7 +3,7 @@
 namespace App\Http\Middleware;
 
 use Illuminate\Http\Middleware\TrustProxies as Middleware;
-use Illuminate\Http\Request;
+use Illuminate\Http\Request; // <-- Make sure this is imported
 
 class TrustProxies extends Middleware
 {
@@ -12,7 +12,7 @@ class TrustProxies extends Middleware
      *
      * @var array<int, string>|string|null
      */
-    protected $proxies;
+    protected $proxies = '*'; // <-- Or the proxy's specific IP
 
     /**
      * The headers that should be used to detect proxies.
@@ -24,5 +24,6 @@ class TrustProxies extends Middleware
         Request::HEADER_X_FORWARDED_HOST |
         Request::HEADER_X_FORWARDED_PORT |
         Request::HEADER_X_FORWARDED_PROTO |
-        Request::HEADER_X_FORWARDED_AWS_ELB;
+        Request::HEADER_X_FORWARDED_PREFIX; // <-- This tells Laravel
+                                            // to respect the /pbkk-b-7 prefix
 }
