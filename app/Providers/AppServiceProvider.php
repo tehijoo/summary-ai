@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\Facades\Schema; // <--- TAMBAHKAN BARIS INI
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -21,5 +22,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Schema::defaultStringLength(191); // <--- TAMBAHKAN BARIS INI
+        if ($appUrl = config('app.url')) {
+            URL::forceRootUrl($appUrl);
+            if ($scheme = parse_url($appUrl, PHP_URL_SCHEME)) {
+                URL::forceScheme($scheme);
+            }
+        }
     }
 }
