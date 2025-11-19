@@ -81,6 +81,8 @@ php artisan migrate
 ```
 
 # Menjalankan Aplikasi
+
+## Mode Lokal
 Sekarang, Anda hanya perlu menjalankan satu server saja.
 - Jalankan Server Web Laravel Buka terminal di folder proyek Anda dan jalankan:
 ```
@@ -89,3 +91,12 @@ php artisan serve
 Akses Aplikasi Buka browser Anda dan kunjungi alamat ```http://localhost:8000```.
 
 Aplikasi Anda sekarang sudah siap digunakan dan terhubung langsung ke API Mistral.
+
+## Mode Docker
+Untuk lingkungan yang konsisten dengan konfigurasi produksi, jalankan perintah berikut:
+
+```bash
+sudo docker compose up -d --build
+sudo docker compose exec app php artisan migrate
+sudo docker compose exec app php artisan key:generate
+```
