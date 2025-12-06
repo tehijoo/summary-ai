@@ -14,14 +14,27 @@
     {{-- Layout 2 Kolom --}}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
         
+        <!-- PDF Viewer Instead of Raw Text -->
         <div class="bg-surface-light dark:bg-surface-dark p-6 rounded-xl border border-border-light dark:border-border-dark h-[80vh] flex flex-col">
             <h3 class="text-2xl font-bold text-text-light-primary dark:text-dark-primary mb-1">Document Content 📄</h3>
-            <p class="text-sm text-text-light-secondary dark:text-dark-secondary mb-4 break-words">{{ $document->original_filename }}</p>
-            <div class="prose dark:prose-invert max-w-none text-text-light-primary dark:text-gray-200 text-sm flex-grow overflow-y-auto p-4 bg-background-light dark:bg-background-dark rounded-lg">
-                {{ $document->content }}
-            </div>
+            <p class="text-sm text-text-light-secondary dark:text-dark-secondary mb-4 break-words">{{ $document->filename ?? 'Document' }}</p>
+            
+            @if($document->file_path && Str::endsWith($document->file_path, '.pdf'))
+                <!-- PDF Viewer using iframe -->
+                <iframe 
+                    src="{{ asset('storage/' . $document->file_path) }}#toolbar=1&navpanes=0&scrollbar=1" 
+                    class="flex-grow rounded-lg border border-border-light dark:border-border-dark"
+                    frameborder="0">
+                </iframe>
+            @else
+                <!-- Fallback to text display -->
+                <div class="prose dark:prose-invert max-w-none text-text-light-primary dark:text-gray-200 text-sm flex-grow overflow-y-auto p-4 bg-background-light dark:bg-background-dark rounded-lg">
+                    {{ $document->content ?? 'No content available' }}
+                </div>
+            @endif
         </div>
 
+        <!-- Chat Section (unchanged) -->
         <div class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark flex flex-col h-[80vh]">
             <div class="p-6 border-b border-border-light dark:border-border-dark">
                 <h3 class="text-2xl font-bold text-text-light-primary dark:text-dark-primary">Ask a Question 💬</h3>
@@ -47,6 +60,42 @@
 
     </div>
 </div>
+
+<!-- Add PDF.js library to the top of your view or layout -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+@if($document->file_path && Str::endsWith($document->file_path, '.pdf'))
+<script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    const pdfPath = "{{ asset('storage/' . $document->file_path) }}";
+    const pdfPages = document.getElementById('pdf-pages');
+    const pdfLoading = document.getElementById('pdf-loading');
+
+    pdfjsLib.getDocument(pdfPath).promise.then(pdf => {
+        pdfLoading.style.display = 'none';
+        
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+            pdf.getPage(pageNum).then(page => {
+                const scale = 1.5;
+                const viewport = page.getViewport({ scale });
+                
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                
+                page.render({ canvasContext: context, viewport }).promise.then(() => {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'rounded-lg overflow-hidden shadow-md';
+                    wrapper.appendChild(canvas);
+                    pdfPages.appendChild(wrapper);
+                });
+            });
+        }
+    });
+</script>
+@endif
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {

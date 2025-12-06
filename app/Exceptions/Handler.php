@@ -3,6 +3,7 @@
 namespace App\Exceptions;
 
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Illuminate\Http\Exceptions\PostTooLargeException;
 use Throwable;
 
 class Handler extends ExceptionHandler
@@ -25,6 +26,15 @@ class Handler extends ExceptionHandler
     {
         $this->reportable(function (Throwable $e) {
             //
+        });
+
+        // Handle PostTooLargeException gracefully
+        $this->renderable(function (PostTooLargeException $e, $request) {
+            \Log::warning('Post too large exception', ['size' => $request->server('CONTENT_LENGTH')]);
+
+            return back()
+                ->with('error', 'File size exceeds maximum allowed limit of 10MB.')
+                ->withInput();
         });
     }
 }

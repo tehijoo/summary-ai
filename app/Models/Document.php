@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Document extends Model
 {
@@ -13,10 +12,12 @@ class Document extends Model
     protected $fillable = [
         'user_id',
         'original_filename',
+        'file_path',
         'content',
     ];
-    public function conversation(): HasOne // <-- Tambahkan method ini
+
+    public function user()
     {
-        return $this->hasOne(Conversation::class);
+        return $this->belongsTo(User::class);
     }
 }

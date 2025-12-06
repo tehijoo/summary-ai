@@ -136,13 +136,12 @@
     <div id="sidebar-overlay" class="lg:hidden fixed inset-0 z-20 bg-black/50 opacity-0 invisible transition-opacity duration-300 ease-in-out"></div>
 
     {{-- Konten Utama --}}
-    <main class="flex-1 overflow-y-auto lg:ml-64 p-6">
+    <main class="flex-1 overflow-y-auto lg:p-16">
         <header class="flex justify-between items-center mb-8">
             {{-- Tombol Hamburger (untuk mobile) --}}
             <button id="hamburger-btn" class="lg:hidden p-2 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">
                 <span class="material-icons-outlined">menu</span>
             </button>
-            <img alt="User avatar" class="w-10 h-10 rounded-full lg:ml-auto" src="https://i.pravatar.cc/40"/>
         </header>
         
         @yield('content') {{-- Ini adalah tempat konten halaman (chat.blade.php, dll) akan dimasukkan --}}

@@ -12,39 +12,73 @@ use Illuminate\Support\Str;
 
 class LLMController extends Controller
 {
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    const SUPPORTED_FORMATS = ['pdf'];
+
     // Method untuk menampilkan halaman utama Summarizer
     public function view()
     {
-        return view('chat');
+        return view('chat', [
+            'maxFileSize' => self::MAX_FILE_SIZE / (1024 * 1024),
+        ]);
     }
 
     // Method untuk memproses ringkasan
     public function ask(Request $request)
     {
+        \Log::info('Ask method called', [
+            'has_file' => $request->hasFile('pdf'),
+            'method' => $request->method(),
+        ]);
+
         $textContent = $request->input('text');
         $originalName = 'Pasted Text';
+        $filePath = null; // NEW: Store file path
 
         if ($request->hasFile('pdf')) {
             $file = $request->file('pdf');
+            
+            // Validate file before processing
+            $validation = $this->validateUploadedFile($file);
+            if ($validation !== true) {
+                \Log::info('File validation failed', ['error' => $validation]);
+                return redirect()->back()->with('error', $validation)->withInput();
+            }
+
             $originalName = $file->getClientOriginalName();
+            
             try {
                 $parser = new \Smalot\PdfParser\Parser();
                 $pdf = $parser->parseFile($file->getRealPath());
                 $textContent = $pdf->getText();
+                
+                if (empty(trim($textContent))) {
+                    return redirect()->back()
+                        ->with('error', 'Could not extract text from PDF. File may be empty or corrupted.')
+                        ->withInput();
+                }
+
+                // NEW: Save the PDF file just like in qnaUpload
+                $filePath = $file->store('documents', 'public');
+                
             } catch (\Exception $e) {
-                return back()->with('response', 'Error reading PDF file: ' . $e->getMessage());
+                \Log::error('PDF parsing error', ['error' => $e->getMessage()]);
+                return redirect()->back()
+                    ->with('error', 'Error reading PDF file: ' . $e->getMessage())
+                    ->withInput();
             }
         }
 
         if (!$textContent) {
-            return back()->with('response', 'Please enter text or upload a PDF.');
+            return redirect()->back()
+                ->with('error', 'Please provide text or upload a PDF file.')
+                ->withInput();
         }
 
-        $textContent = preg_replace('/\s+/', ' ', trim($textContent));
-
-        // Dokumen tidak perlu dibuat di sini, ia akan dibuat di bawah HANYA jika Auth::check()
-        // Ini menghindari pembuatan duplikat
-        // $document = Document::create([ ... ]);
+        // Truncate extremely long content
+        if (strlen($textContent) > 50000) {
+            $textContent = substr($textContent, 0, 50000) . "\n\n[Content truncated due to length]";
+        }
 
         $prompt = "Anda adalah seorang ahli yang pandai membuat ringkasan teks. Tolong buatkan ringkasan dari teks berikut. Berikan ringkasan dengan bahasa yang baik dan jelas dan memuat poin dari teks:\n\n" . Str::limit($textContent, 30000, '');
 
@@ -58,15 +92,15 @@ class LLMController extends Controller
         $summaryMarkdown = $apiResponse->text ?? 'No valid response from model.';
         // --- END OLLAMA MIGRATION ---
 
-
         $parsedown = new \Parsedown();
         $summaryHtml = $parsedown->text($summaryMarkdown);
 
         if (Auth::check()) {
-            // 1. Simpan dokumen
+            // 1. Simpan dokumen WITH file_path
             $document = Document::create([
                 'user_id' => Auth::id(),
                 'original_filename' => $originalName,
+                'file_path' => $filePath, // NEW: Save the PDF path
                 'content' => $textContent,
             ]);
 
@@ -117,29 +151,50 @@ class LLMController extends Controller
 
     public function qnaUpload(Request $request)
     {
-        $request->validate(['document' => 'required|file|mimes:pdf,txt,docx|max:10240']);
+        $request->validate([
+            'document' => 'required|file|mimes:pdf|max:10240', // 10MB
+        ]);
+
         $file = $request->file('document');
-        $originalName = $file->getClientOriginalName();
-        $textContent = '';
+        
+        // Validate file
+        $validation = $this->validateUploadedFile($file);
+        if ($validation !== true) {
+            return back()->with('error', $validation)->withInput();
+        }
+
         try {
+            // Parse PDF to extract text
             $parser = new \Smalot\PdfParser\Parser();
             $pdf = $parser->parseFile($file->getRealPath());
             $textContent = $pdf->getText();
+
+            if (empty(trim($textContent))) {
+                return back()
+                    ->with('error', 'Could not extract text from PDF. File may be empty or corrupted.')
+                    ->withInput();
+            }
+
+            // Store the actual PDF file
+            $filePath = $file->store('documents', 'public');
+
+            // Create document record with both content and file_path
+            $document = Document::create([
+                'user_id' => Auth::id(),
+                'original_filename' => $file->getClientOriginalName(),
+                'file_path' => $filePath,
+                'content' => $textContent,
+            ]);
+
+            return redirect()->route('qna.chat', $document)
+                ->with('success', 'Document uploaded successfully!');
+
         } catch (\Exception $e) {
-            return back()->with('error', 'Failed to parse PDF file. Error: ' . $e->getMessage());
+            \Log::error('PDF upload error', ['error' => $e->getMessage()]);
+            return back()
+                ->with('error', 'Error processing PDF: ' . $e->getMessage())
+                ->withInput();
         }
-
-        if (empty($textContent)) {
-            return back()->with('error', 'Could not extract text from the document.');
-        }
-
-        $document = Document::create([
-            'user_id' => Auth::id(), // Penting untuk privasi
-            'original_filename' => $originalName,
-            'content' => $textContent,
-        ]);
-
-        return redirect()->route('qna.chat', $document);
     }
 
     public function qnaChat(Document $document)
@@ -302,5 +357,41 @@ class LLMController extends Controller
         }
 
         return (object)['success' => true, 'text' => $responseText];
+    }
+
+    /**
+     * Validate uploaded file
+     */
+    private function validateUploadedFile($file): bool|string
+    {
+        if (!$file) {
+            return 'No file provided.';
+        }
+
+        if (!$file->isValid()) {
+            return 'File upload failed. Error: ' . $file->getErrorMessage();
+        }
+
+        $size = $file->getSize();
+        if ($size > self::MAX_FILE_SIZE) {
+            $maxMB = self::MAX_FILE_SIZE / (1024 * 1024);
+            return "File size ({$size} bytes) exceeds {$maxMB}MB limit.";
+        }
+
+        if ($size === 0) {
+            return 'File is empty.';
+        }
+
+        $extension = strtolower($file->getClientOriginalExtension());
+        if (!in_array($extension, self::SUPPORTED_FORMATS)) {
+            return "File type '.{$extension}' is not supported. Only PDF files are allowed.";
+        }
+
+        $mimeType = $file->getMimeType();
+        if ($mimeType !== 'application/pdf') {
+            return "Invalid file type '{$mimeType}'. Please upload a valid PDF file.";
+        }
+
+        return true;
     }
 }

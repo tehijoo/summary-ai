@@ -8,7 +8,7 @@
     </div>
 
     {{-- Form Laravel yang fungsional --}}
-    <form method="POST" action="{{ url('/ask') }}" enctype="multipart/form-data">
+    <form id="chatForm" action="{{ route('ask') }}" method="POST" enctype="multipart/form-data">
         @csrf
         
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
@@ -16,13 +16,14 @@
             <div class="flex flex-col gap-6">
                 <div class="bg-white dark:bg-surface-dark p-8 rounded-xl border border-gray-200 dark:border-gray-800 relative focus-within:border-primary transition-all duration-300 dark:animate-pulse-glow">
                     <label class="block text-lg font-semibold mb-3 text-gray-900 dark:text-white" for="text">Paste Your Text</label>
-                    <textarea name="text" id="text" class="w-full bg-transparent border-gray-300 dark:border-gray-700 rounded-lg placeholder-gray-400 dark:placeholder-gray-500 focus:ring-primary focus:border-primary transition-colors" placeholder="Enter your content here..." rows="12">{{ old('text') }}</textarea>
+                    <textarea name="text" id="textInput" class="form-control w-full bg-transparent border-gray-300 dark:border-gray-700 rounded-lg placeholder-gray-400 dark:placeholder-gray-500 focus:ring-primary focus:border-primary transition-colors" placeholder="Enter your content here..." rows="12">{{ old('text') }}</textarea>
                 </div>
                 
                 {{-- TOMBOL CREATE SUMMARY --}}
-                <button type="submit" id="summary-btn" class="w-full bg-primary text-white font-bold py-4 px-6 rounded-lg hover:bg-blue-600 transition-colors duration-300 shadow-lg shadow-blue-500/20 flex items-center justify-center">
-                    <span id="btn-loader" class="material-icons-outlined animate-spin mr-2 hidden">hourglass_top</span>
-                    <span id="btn-text">Create Summary</span>
+                <button type="submit" id="submitBtn" class="w-full bg-primary text-white font-bold py-4 px-6 rounded-lg hover:bg-blue-600 transition-colors duration-300 shadow-lg shadow-blue-500/20 flex items-center justify-center">
+                    <span id="submitText">Create Summary</span>
+                    <span id="loadingSpinner" class="spinner-border spinner-border-sm ms-2" style="display: none;">
+                    </span>
                 </button>
             </div>
 
@@ -39,7 +40,9 @@
                 {{-- Input file tersembunyi yang fungsional --}}
                 <input type="file" name="pdf" id="pdf" class="hidden" accept=".pdf">
                 <p id="file-info" class="text-sm text-gray-500 dark:text-gray-400 mt-4 h-5"></p> 
-                <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">Max file size: 10MB</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    Max file size: {{ $maxFileSize }}MB (PDF only)
+                </p>
             </div>
         </div>
     </form>
@@ -48,11 +51,37 @@
     @if(session('response'))
         <div class="mt-12">
             <h3 class_ ="text-3xl font-bold text-gray-900 dark:text-white mb-6">Most Recent Summary</h3>
-            <div class="bg-white dark:bg-surface-dark p-8 rounded-xl border border-gray-200 dark:border-gray-800 prose dark:prose-invert max-w-none" style="white-space: pre-wrap;">
+            <div class="bg-white dark:bg-surface-dark p-8 rounded-xl border border-gray-200 dark:border-gray-800 prose dark:prose-invert max-w-none">
                 {!! session('response') !!}
             </div>
         </div>
     @endif
+
+    {{-- Error Handling --}}
+    @if ($errors->any())
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>Error:</strong>
+            @foreach ($errors->all() as $error)
+                <div>{{ $error }}</div>
+            @endforeach
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+
+    @if (session('error'))
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>Error:</strong> {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="loading-overlay" style="display: none;">
+    <div class="spinner-container">
+        <div class="spinner"></div>
+        <p>Thinking...</p>
+    </div>
 </div>
 @endsection
 
@@ -108,9 +137,9 @@
 
         // --- LOADING BUTTON SCRIPT ---
         const summaryForm = document.querySelector('form');
-        const summaryBtn = document.getElementById('summary-btn');
-        const btnLoader = document.getElementById('btn-loader');
-        const btnText = document.getElementById('btn-text');
+        const summaryBtn = document.getElementById('submitBtn');
+        const btnLoader = document.getElementById('loadingSpinner');
+        const btnText = document.getElementById('submitText');
 
         if (summaryForm && summaryBtn) {
             summaryForm.addEventListener('submit', function() {
@@ -121,5 +150,75 @@
         }
 
     });
+
+    document.getElementById('chatForm').addEventListener('submit', function() {
+        // Hide submit text and show spinner
+        document.getElementById('submitText').style.display = 'none';
+        document.getElementById('loadingSpinner').style.display = 'inline-block';
+        
+        // Disable the button to prevent multiple submissions
+        document.getElementById('submitBtn').disabled = true;
+    });
 </script>
+
+<style>
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    }
+
+    .spinner-container {
+        text-align: center;
+        background: white;
+        padding: 40px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #3498db;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .spinner-container p {
+        margin: 0;
+        color: #333;
+        font-weight: 500;
+    }
+
+    .spinner-border {
+        display: inline-block;
+        width: 1rem;
+        height: 1rem;
+        vertical-align: text-bottom;
+        border: 0.25em solid currentColor;
+        border-right-color: transparent;
+        border-radius: 50%;
+        animation: spinner-border 0.75s linear infinite;
+    }
+
+    @keyframes spinner-border {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+</style>
 @endsection
