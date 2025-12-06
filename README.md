@@ -97,6 +97,8 @@ Untuk lingkungan yang konsisten dengan konfigurasi produksi, jalankan perintah b
 
 ```bash
 sudo docker compose up -d --build
+sudo docker compose exec app chmod -R 777 /var/www/storage
+sudo docker compose exec app chmod -R 777 /var/www/bootstrap/cache
 sudo docker compose exec app php artisan migrate
 sudo docker compose exec app php artisan key:generate
 ```
