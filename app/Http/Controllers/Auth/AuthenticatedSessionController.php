@@ -29,18 +29,22 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        $intended = redirect()->intended(RouteServiceProvider::HOME);
+        // Get the intended URL
+        $intended = $request->session()->pull('url.intended');
         
-        // Fix the intended URL if it doesn't include the subfolder path
-        if ($request->session()->has('url.intended')) {
-            $intendedUrl = $request->session()->get('url.intended');
-            if (!str_contains($intendedUrl, '/ringkaskeun')) {
-                $intendedUrl = str_replace(config('app.url'), config('app.url'), $intendedUrl);
-                return redirect($intendedUrl);
-            }
+        if ($intended && !str_contains($intended, '/ringkaskeun')) {
+            // Extract the path and prepend /ringkaskeun
+            $parsedUrl = parse_url($intended);
+            $path = $parsedUrl['path'] ?? '';
+            $query = isset($parsedUrl['query']) ? '?' . $parsedUrl['query'] : '';
+            $intended = '/ringkaskeun' . $path . $query;
+        }
+        
+        if ($intended) {
+            return redirect($intended);
         }
 
-        return $intended;
+        return redirect(RouteServiceProvider::HOME);
     }
 
     /**
