@@ -29,7 +29,18 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(RouteServiceProvider::HOME);
+        $intended = redirect()->intended(RouteServiceProvider::HOME);
+        
+        // Fix the intended URL if it doesn't include the subfolder path
+        if ($request->session()->has('url.intended')) {
+            $intendedUrl = $request->session()->get('url.intended');
+            if (!str_contains($intendedUrl, '/ringkaskeun')) {
+                $intendedUrl = str_replace(config('app.url'), config('app.url'), $intendedUrl);
+                return redirect($intendedUrl);
+            }
+        }
+
+        return $intended;
     }
 
     /**
