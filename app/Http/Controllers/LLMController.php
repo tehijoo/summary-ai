@@ -394,4 +394,114 @@ class LLMController extends Controller
 
         return true;
     }
+
+    public function uploadChunk(Request $request)
+    {
+        $request->validate([
+            'chunk' => 'required|file|max:5120', // 5MB per chunk
+            'chunk_index' => 'required|integer',
+            'total_chunks' => 'required|integer',
+            'file_id' => 'required|string',
+            'filename' => 'required|string',
+        ]);
+
+        $chunkIndex = $request->input('chunk_index');
+        $totalChunks = $request->input('total_chunks');
+        $fileId = $request->input('file_id');
+        $filename = $request->input('filename');
+        $chunk = $request->file('chunk');
+
+        // Create temp directory for chunks
+        $tempDir = storage_path('app/chunks/' . $fileId);
+        if (!is_dir($tempDir)) {
+            mkdir($tempDir, 0755, true);
+        }
+
+        // Save chunk
+        $chunk->move($tempDir, "chunk_{$chunkIndex}");
+
+        // Check if all chunks are uploaded
+        $uploadedChunks = 0;
+        for ($i = 0; $i < $totalChunks; $i++) {
+            if (file_exists("{$tempDir}/chunk_{$i}")) {
+                $uploadedChunks++;
+            }
+        }
+
+        // If all chunks uploaded, merge them
+        if ($uploadedChunks === $totalChunks) {
+            try {
+                $mergedFilePath = storage_path('app/chunks/' . $fileId . '_merged.pdf');
+                $mergedFile = fopen($mergedFilePath, 'wb');
+
+                for ($i = 0; $i < $totalChunks; $i++) {
+                    $chunkPath = "{$tempDir}/chunk_{$i}";
+                    $chunk = fopen($chunkPath, 'rb');
+                    stream_copy_to_stream($chunk, $mergedFile);
+                    fclose($chunk);
+                    unlink($chunkPath);
+                }
+                fclose($mergedFile);
+
+                // Process the merged PDF
+                return $this->processMergedPDF($mergedFilePath, $filename);
+
+            } catch (\Exception $e) {
+                \Log::error('Chunk merge error', ['error' => $e->getMessage()]);
+                return response()->json(['success' => false, 'error' => 'Error merging chunks'], 500);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Chunk {$chunkIndex} uploaded",
+            'uploaded_chunks' => $uploadedChunks,
+        ]);
+    }
+
+    private function processMergedPDF($mergedFilePath, $filename)
+    {
+        try {
+            // Parse PDF
+            $parser = new \Smalot\PdfParser\Parser();
+            $pdf = $parser->parseFile($mergedFilePath);
+            $textContent = $pdf->getText();
+
+            if (empty(trim($textContent))) {
+                unlink($mergedFilePath);
+                return response()->json(['success' => false, 'error' => 'Could not extract text from PDF'], 400);
+            }
+
+            // Move to final location
+            $filePath = 'documents/' . uniqid() . '.pdf';
+            rename($mergedFilePath, storage_path('app/public/' . $filePath));
+
+            // Create document record
+            $document = Document::create([
+                'user_id' => Auth::id(),
+                'original_filename' => $filename,
+                'file_path' => $filePath,
+                'content' => $textContent,
+            ]);
+
+            // Clean up temp directory
+            $tempDir = storage_path('app/chunks/' . pathinfo($mergedFilePath, PATHINFO_FILENAME));
+            if (is_dir($tempDir)) {
+                rmdir($tempDir);
+            }
+
+            return response()->json([
+                'success' => true,
+                'document_id' => $document->id,
+                'message' => 'File uploaded and processed successfully',
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('PDF processing error', ['error' => $e->getMessage()]);
+            if (file_exists($mergedFilePath)) {
+                unlink($mergedFilePath);
+            }
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
 }

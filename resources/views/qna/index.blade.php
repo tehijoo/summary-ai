@@ -118,5 +118,76 @@
             });
         }
     });
+
+    const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
+
+    async function uploadFileInChunks(file) {
+        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+        const fileId = 'upload_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+        console.log(`Starting chunked upload: ${file.name} (${totalChunks} chunks)`);
+
+        for (let i = 0; i < totalChunks; i++) {
+            const start = i * CHUNK_SIZE;
+            const end = Math.min(start + CHUNK_SIZE, file.size);
+            const chunk = file.slice(start, end);
+
+            const formData = new FormData();
+            formData.append('chunk', chunk);
+            formData.append('chunk_index', i);
+            formData.append('total_chunks', totalChunks);
+            formData.append('file_id', fileId);
+            formData.append('filename', file.name);
+
+            try {
+                const response = await fetch('/qna/upload-chunk', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    body: formData,
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Chunk upload failed');
+                }
+
+                const progress = ((i + 1) / totalChunks) * 100;
+                console.log(`Uploaded chunk ${i + 1}/${totalChunks} (${progress.toFixed(1)}%)`);
+
+                // If this is the last chunk and processing is complete
+                if (i === totalChunks - 1 && data.document_id) {
+                    console.log('Upload complete, redirecting...');
+                    window.location.href = `/qna/chat/${data.document_id}`;
+                }
+            } catch (error) {
+                console.error(`Error uploading chunk ${i}:`, error);
+                alert(`Upload failed at chunk ${i + 1}: ${error.message}`);
+                throw error;
+            }
+        }
+    }
+
+    // Hook into your existing file input
+    document.addEventListener('DOMContentLoaded', function() {
+        const fileInput = document.querySelector('input[type="file"][name="document"]');
+        
+        if (fileInput) {
+            fileInput.addEventListener('change', async function(e) {
+                const file = this.files[0];
+                if (file && file.type === 'application/pdf') {
+                    // Use chunked upload for files larger than 10MB
+                    if (file.size > 10 * 1024 * 1024) {
+                        e.preventDefault();
+                        await uploadFileInChunks(file);
+                        return;
+                    }
+                }
+            });
+        }
+    });
 </script>
 @endsection

@@ -49,6 +49,7 @@ Route::middleware(['auth'])->group(function () {
     // Q&A Document (Riwayat)
     Route::get('/qna', [LLMController::class, 'qnaIndex'])->name('qna.index');
     Route::post('/qna/upload', [LLMController::class, 'qnaUpload'])->name('qna.upload');
+    Route::post('/qna/upload-chunk', [LLMController::class, 'uploadChunk'])->middleware('auth');
     Route::get('/qna/chat/{document}', [LLMController::class, 'qnaChat'])->name('qna.chat');
     Route::post('/qna/chat/{document}', [LLMController::class, 'qnaAsk'])->name('qna.ask');
     Route::delete('/qna/documents/{document}', [LLMController::class, 'destroyDocument'])->name('qna.destroy');
