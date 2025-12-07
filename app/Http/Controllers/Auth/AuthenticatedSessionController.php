@@ -32,22 +32,22 @@ class AuthenticatedSessionController extends Controller
         // Get the intended URL
         $intended = $request->session()->pull('url.intended');
         
-        if ($intended) {
-            // Extract just the path from the intended URL
-            $parsedUrl = parse_url($intended);
-            $path = $parsedUrl['path'] ?? '';
+        // if ($intended) {
+        //     // Extract just the path from the intended URL
+        //     $parsedUrl = parse_url($intended);
+        //     $path = $parsedUrl['path'] ?? '';
             
-            // Remove /ringkaskeun if it already exists (to avoid duplicates)
-            $path = str_replace('/ringkaskeun', '', $path);
+        //     // Remove /ringkaskeun if it already exists (to avoid duplicates)
+        //     $path = str_replace('/ringkaskeun', '', $path);
             
-            // Now prepend /ringkaskeun
-            $path = '/ringkaskeun' . $path;
+        //     // Now prepend /ringkaskeun
+        //     $path = '/ringkaskeun' . $path;
             
-            $query = isset($parsedUrl['query']) ? '?' . $parsedUrl['query'] : '';
-            $intended = $path . $query;
+        //     $query = isset($parsedUrl['query']) ? '?' . $parsedUrl['query'] : '';
+        //     $intended = $path . $query;
             
-            return redirect($intended);
-        }
+        //     return redirect($intended);
+        // }
 
         return redirect(RouteServiceProvider::HOME);
     }
