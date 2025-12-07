@@ -119,9 +119,16 @@
         }
     });
 
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
     const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
 
     async function uploadFileInChunks(file) {
+        // Reject files larger than 10MB
+        if (file.size > MAX_FILE_SIZE) {
+            alert(`File size (${(file.size / 1024 / 1024).toFixed(2)}MB) exceeds 10MB limit. Please upload a smaller file.`);
+            return;
+        }
+
         const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
         const fileId = 'upload_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
@@ -179,12 +186,17 @@
             fileInput.addEventListener('change', async function(e) {
                 const file = this.files[0];
                 if (file && file.type === 'application/pdf') {
-                    // Use chunked upload for files larger than 10MB
-                    if (file.size > 10 * 1024 * 1024) {
-                        e.preventDefault();
-                        await uploadFileInChunks(file);
+                    // Check file size limit
+                    if (file.size > MAX_FILE_SIZE) {
+                        alert(`File is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Maximum allowed: 10MB`);
+                        this.value = ''; // Clear the input
                         return;
                     }
+                    
+                    // Use chunked upload for better reliability
+                    e.preventDefault();
+                    await uploadFileInChunks(file);
+                    return;
                 }
             });
         }

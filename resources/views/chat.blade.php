@@ -86,14 +86,12 @@
 @endsection
 
 @section('scripts')
-{{-- Skrip fungsionalitas Anda tidak perlu diubah, cukup salin dari kode sebelumnya --}}
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        
-        // --- DRAG AND DROP SCRIPT ---
         const dropZone = document.getElementById('drop-zone');
         const fileInput = document.getElementById('pdf');
         const fileInfo = document.getElementById('file-info');
+        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
         if (dropZone) {
             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -120,15 +118,25 @@
             dropZone.addEventListener('drop', function (e) {
                 const dt = e.dataTransfer;
                 const files = dt.files;
-                fileInput.files = files;
                 if (files.length > 0) {
+                    if (files[0].size > MAX_FILE_SIZE) {
+                        alert(`File size exceeds 10MB limit. Please upload a smaller file.`);
+                        return;
+                    }
+                    fileInput.files = files;
                     fileInfo.textContent = `File selected: ${files[0].name}`;
                 }
             }, false);
 
             fileInput.addEventListener('change', function() {
                 if (this.files.length > 0) {
-                    fileInfo.textContent = `File selected: ${this.files[0].name}`;
+                    if (this.files[0].size > MAX_FILE_SIZE) {
+                        alert(`File size exceeds 10MB limit. Please upload a smaller file.`);
+                        this.value = ''; // Clear the input
+                        fileInfo.textContent = '';
+                    } else {
+                        fileInfo.textContent = `File selected: ${this.files[0].name}`;
+                    }
                 } else {
                     fileInfo.textContent = '';
                 }

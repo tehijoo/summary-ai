@@ -397,19 +397,34 @@ class LLMController extends Controller
 
     public function uploadChunk(Request $request)
     {
+        // Validate chunk size (5MB per chunk)
         $request->validate([
-            'chunk' => 'required|file|max:5120', // 5MB per chunk
+            'chunk' => 'required|file|max:5120', // 5MB
             'chunk_index' => 'required|integer',
             'total_chunks' => 'required|integer',
             'file_id' => 'required|string',
-            'filename' => 'required|string',
+            'filename' => 'required|string|max:500',
         ]);
 
-        $chunkIndex = $request->input('chunk_index');
         $totalChunks = $request->input('total_chunks');
         $fileId = $request->input('file_id');
-        $filename = $request->input('filename');
-        $chunk = $request->file('chunk');
+        
+        // Calculate total file size from chunks
+        $chunkIndex = $request->input('chunk_index');
+        $tempDir = storage_path('app/chunks/' . $fileId);
+        $totalSize = 0;
+        
+        // Check if total size would exceed 10MB
+        for ($i = 0; $i < $totalChunks; $i++) {
+            $chunkPath = "{$tempDir}/chunk_{$i}";
+            if (file_exists($chunkPath)) {
+                $totalSize += filesize($chunkPath);
+            }
+        }
+        
+        if ($totalSize > self::MAX_FILE_SIZE) {
+            return response()->json(['success' => false, 'error' => 'Total file size exceeds 10MB limit'], 413);
+        }
 
         // Create temp directory for chunks
         $tempDir = storage_path('app/chunks/' . $fileId);
